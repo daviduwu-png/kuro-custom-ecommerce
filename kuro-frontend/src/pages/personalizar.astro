@@ -1,0 +1,19 @@
+---
+import Layout from "../layouts/Layout.astro";
+import ProductCustomizer from "../components/ProductCustomizer/index.jsx";
+---
+
+<Layout title="Laboratorio Kuro | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen py-10">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-10 border-b border-[#2d2d2d] pb-10">
+        <h1 class="text-3xl font-bold text-[#f0f0f0] mb-4 uppercase tracking-widest">Laboratorio Kuro</h1>
+        <p class="text-[#888888] max-w-2xl mx-auto font-light text-sm tracking-wide">
+          Sube tus gráficos, define los parámetros. Nosotros ejecutamos tu visión con precisión milimétrica.
+        </p>
+      </div>
+
+      <ProductCustomizer client:only="react" />
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,134 @@
+---
+import { Instagram, Facebook, Twitter, Mail, MapPin, Phone } from "lucide-react";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="bg-[#0e0e0e] text-[#f0f0f0] pt-20 pb-10 border-t border-[#2d2d2d]">
+  <div class="container mx-auto px-4 max-w-7xl">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+      <!-- Branding & Socials -->
+      <div class="space-y-6 md:pr-8">
+        <div>
+          <h3 class="text-2xl font-bold tracking-widest text-[#f0f0f0] mb-4 uppercase flex items-center gap-3">
+            <img src="/kuro-logo.png" alt="Kuro Custom Logo" class="h-6 w-auto opacity-90" />
+            Kuro Custom
+          </h3>
+          <p class="text-[#888888] text-sm leading-relaxed font-light">
+            Minimalismo puro. Prendas a medida. Redefiniendo el estándar con estética noir y calidad obsesiva. Tu identidad, materializada.
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <a
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-10 h-10 rounded-sm bg-[#161616] flex items-center justify-center text-[#888888] hover:bg-[#f0f0f0] hover:text-[#0e0e0e] transition-all border border-[#2d2d2d]"
+          >
+            <Instagram size={16} strokeWidth={1.5} />
+          </a>
+          <a
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-10 h-10 rounded-sm bg-[#161616] flex items-center justify-center text-[#888888] hover:bg-[#f0f0f0] hover:text-[#0e0e0e] transition-all border border-[#2d2d2d]"
+          >
+            <Facebook size={16} strokeWidth={1.5} />
+          </a>
+          <a
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-10 h-10 rounded-sm bg-[#161616] flex items-center justify-center text-[#888888] hover:bg-[#f0f0f0] hover:text-[#0e0e0e] transition-all border border-[#2d2d2d]"
+          >
+            <Twitter size={16} strokeWidth={1.5} />
+          </a>
+        </div>
+      </div>
+
+      <!-- Links: Tienda -->
+      <div>
+        <h4 class="text-[#f0f0f0] font-bold mb-6 uppercase tracking-widest text-xs">Colecciones</h4>
+        <ul class="space-y-4">
+          <li>
+            <a href="/catalogo" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Todo el Catálogo</a>
+          </li>
+          <li><a href="#" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Línea Noir</a></li>
+          <li><a href="#" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Esenciales</a></li>
+          <li><a href="/personalizar" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Hecho a Medida</a></li>
+        </ul>
+      </div>
+
+      <!-- Links: Soporte -->
+      <div>
+        <h4 class="text-[#f0f0f0] font-bold mb-6 uppercase tracking-widest text-xs">Asistencia</h4>
+        <ul class="space-y-4">
+          <li>
+            <a href="/preguntas-frecuentes" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">FAQs</a>
+          </li>
+          <li>
+            <a href="/politica-de-reembolsos-y-envio" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Envíos globales</a>
+          </li>
+          <li>
+            <a href="/politica-de-reembolsos-y-envio" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Devoluciones</a>
+          </li>
+          <li>
+            <a href="/guia-de-tallas" class="text-[#888888] hover:text-[#f0f0f0] transition-colors text-sm font-light">Guía de tallas</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Links: Contacto -->
+      <div>
+        <h4 class="text-[#f0f0f0] font-bold mb-6 uppercase tracking-widest text-xs">Contacto</h4>
+        <ul class="space-y-5">
+          <li class="flex items-start gap-4 text-[#888888] text-sm font-light">
+            <MapPin size={16} strokeWidth={1.5} className="text-[#f0f0f0] shrink-0 mt-0.5" />
+            <span>Studio<br />Ciudad de México, MX</span>
+          </li>
+          <li class="flex items-center gap-4 text-[#888888] text-sm font-light">
+            <Phone size={16} strokeWidth={1.5} className="text-[#f0f0f0] shrink-0" />
+            <a
+              href="#"
+              class="hover:text-[#f0f0f0] transition-colors"
+            >
+              +52 555 123 4567
+            </a>
+          </li>
+          <li class="flex items-center gap-4 text-[#888888] text-sm font-light">
+            <Mail size={16} strokeWidth={1.5} className="text-[#f0f0f0] shrink-0" />
+            <span>hello@kurocustom.com</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="border-t border-[#2d2d2d] pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+      <p class="text-[#555555] text-xs font-light tracking-wide">
+        &copy; {year} KURO CUSTOM. TODOS LOS DERECHOS RESERVADOS.
+      </p>
+
+      <div class="flex flex-col md:flex-row items-center gap-6 text-xs text-[#555555] font-light">
+        <div class="flex gap-6">
+          <a href="/politica-de-privacidad" class="hover:text-[#f0f0f0] transition-colors">Privacidad</a>
+          <a href="/terminos-y-condiciones" class="hover:text-[#f0f0f0] transition-colors">Términos</a>
+        </div>
+
+        <a
+          href="https://insolus.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-3 md:ml-6 md:pl-6 md:border-l border-[#2d2d2d] group transition-all"
+        >
+          <span class="uppercase tracking-widest text-[10px] group-hover:text-[#f0f0f0] transition-colors">Digital By</span>
+          <img
+            src="/insolus.png"
+            alt="Insolus"
+            class="h-4 w-auto opacity-40 group-hover:opacity-100 transition-opacity grayscale"
+          />
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

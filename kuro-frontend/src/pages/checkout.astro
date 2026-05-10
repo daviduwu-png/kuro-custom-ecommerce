@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CheckoutForm from "../components/Checkout/CheckoutForm.jsx";
+---
+
+<Layout title="Caja | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen py-10 pb-20 text-[#f0f0f0]">
+    <div class="container mx-auto px-4 max-w-6xl">
+      <div class="mb-10 text-center md:text-left border-b border-[#2d2d2d] pb-6">
+        <h1 class="text-3xl font-bold uppercase tracking-widest text-[#f0f0f0]">Finalizar Compra</h1>
+        <p class="text-[#888888] mt-2 text-[10px] uppercase tracking-widest font-bold">Estás a un paso de materializar tu estilo.</p>
+      </div>
+
+      <CheckoutForm client:only="react" />
+    </div>
+  </div>
+</Layout>

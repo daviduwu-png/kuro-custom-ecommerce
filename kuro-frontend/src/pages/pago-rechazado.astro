@@ -1,0 +1,47 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { XCircle, RefreshCcw } from "lucide-react";
+---
+
+<Layout title="Transacción Fallida | Kuro Custom">
+    <div class="min-h-[70vh] flex items-center justify-center py-20 bg-gray-50">
+        <div class="text-center animate-fade-in max-w-md mx-auto bg-white p-10 rounded-2xl shadow-sm border border-gray-100">
+            <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <XCircle size={48} className="text-red-500" />
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                Pago Rechazado
+            </h1>
+            <p id="order-number" class="text-red-400 font-bold mb-3 hidden"></p>
+            <p class="text-gray-500 mb-8 leading-relaxed">
+                El banco fue incapaz de procesar el pago o fue rechazado. No se te ha realizado ningún cargo en tu cuenta. Por favor intenta con otra tarjeta u otro método.
+            </p>
+            <div class="space-y-3">
+                <a
+                    href="/checkout"
+                    class="block w-full bg-indigo-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md hover:shadow-lg flex justify-center items-center gap-2"
+                >
+                    <RefreshCcw size={18} /> Reintentar Pago
+                </a>
+                <a
+                    href="/catalogo"
+                    class="block w-full bg-white text-gray-700 border border-gray-200 px-8 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition"
+                >
+                    Volver al catálogo
+                </a>
+            </div>
+        </div>
+    </div>
+</Layout>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("order");
+    if (orderId) {
+        const el = document.getElementById("order-number");
+        if (el) {
+            el.textContent = `Orden #ORD-${String(orderId).padStart(3, "0")}`;
+            el.classList.remove("hidden");
+        }
+    }
+</script>

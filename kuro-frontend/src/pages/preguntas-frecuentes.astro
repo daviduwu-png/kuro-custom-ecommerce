@@ -1,0 +1,60 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { HelpCircle, CreditCard, Truck, RefreshCcw, Package } from "lucide-react";
+---
+
+<Layout title="Asistencia | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen py-20">
+    <div class="container mx-auto px-4 max-w-4xl">
+      <div class="text-center mb-16 border-b border-[#2d2d2d] pb-10">
+        <h1 class="text-3xl font-bold text-[#f0f0f0] mb-4 flex justify-center items-center gap-4 uppercase tracking-widest">
+          <HelpCircle size={28} strokeWidth={1.5} className="text-[#f0f0f0]" /> Asistencia Kuro
+        </h1>
+        <p class="text-[#888888] text-sm tracking-wide font-light">Resolución de dudas sobre adquisiciones, logística y manufactura.</p>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Pregunta 1 -->
+        <div class="bg-[#161616] rounded-sm p-8 border border-[#2d2d2d] hover:border-[#555555] transition-colors">
+          <h3 class="text-sm font-bold text-[#f0f0f0] mb-4 flex items-center gap-3 uppercase tracking-widest">
+            <CreditCard size={18} strokeWidth={1.5} className="text-[#888888]" /> Vías de Transacción
+          </h3>
+          <p class="text-[#888888] text-sm font-light leading-relaxed">
+            Procesamos pagos mediante tarjetas (Visa, Mastercard, Amex) a través de Stripe. Aceptamos Mercado Pago para SPEI y efectivo. Toda la infraestructura opera bajo criptografía estricta.
+          </p>
+        </div>
+
+        <!-- Pregunta 2 -->
+        <div class="bg-[#161616] rounded-sm p-8 border border-[#2d2d2d] hover:border-[#555555] transition-colors">
+          <h3 class="text-sm font-bold text-[#f0f0f0] mb-4 flex items-center gap-3 uppercase tracking-widest">
+            <Package size={18} strokeWidth={1.5} className="text-[#888888]" /> Modificación de Pedidos
+          </h3>
+          <p class="text-[#888888] text-sm font-light leading-relaxed">
+            La logística es inmediata. Si requieres ajustes, comunícate a <strong class="text-[#f0f0f0]">hello@kurocustom.com</strong> en un máximo de 2 horas post-compra. Fuera de esa ventana, el proceso es irreversible.
+          </p>
+        </div>
+
+        <!-- Pregunta 3 -->
+        <div class="bg-[#161616] rounded-sm p-8 border border-[#2d2d2d] hover:border-[#555555] transition-colors">
+          <h3 class="text-sm font-bold text-[#f0f0f0] mb-4 flex items-center gap-3 uppercase tracking-widest">
+            <Truck size={18} strokeWidth={1.5} className="text-[#888888]" /> Cobertura Internacional
+          </h3>
+          <p class="text-[#888888] text-sm font-light leading-relaxed">
+            Actualmente nuestra red logística cubre exclusivamente el territorio mexicano. La expansión global está en la hoja de ruta.
+          </p>
+        </div>
+
+        <!-- Pregunta 4 -->
+        <div class="bg-[#161616] rounded-sm p-8 border border-[#2d2d2d] hover:border-[#555555] transition-colors">
+          <h3 class="text-sm font-bold text-[#f0f0f0] mb-4 flex items-center gap-3 uppercase tracking-widest">
+            <RefreshCcw size={18} strokeWidth={1.5} className="text-[#888888]" /> Reemplazos por Falla
+          </h3>
+          <p class="text-[#888888] text-sm font-light leading-relaxed">
+            Mantenemos un control de calidad obsesivo. Sin embargo, si detectas una anomalía, dispones de 30 días para reportarlo con evidencia. El reemplazo será inmediato y sin fricciones.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</Layout>

@@ -1,0 +1,19 @@
+---
+import Layout from "../layouts/Layout.astro";
+import ProductGrid from "../components/ProductGrid.jsx";
+---
+
+<Layout title="Catálogo | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen pb-20">
+    <header class="bg-[#161616] border-b border-[#2d2d2d] mb-10 pt-10 pb-10">
+      <div class="container mx-auto px-4">
+        <h1 class="text-3xl font-bold text-[#f0f0f0] mb-3 uppercase tracking-widest">Catálogo</h1>
+        <p class="text-[#888888] font-light text-sm tracking-wide">Explora la colección noir. Minimalismo en cada prenda.</p>
+      </div>
+    </header>
+
+    <section class="container mx-auto px-4">
+      <ProductGrid client:load />
+    </section>
+  </div>
+</Layout>

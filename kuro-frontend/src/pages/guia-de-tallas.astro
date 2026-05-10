@@ -1,0 +1,60 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Ruler } from "lucide-react";
+---
+
+<Layout title="Guía de Tallas | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen py-20">
+    <div class="container mx-auto px-4 max-w-4xl">
+      <div class="bg-[#161616] rounded-sm p-10 md:p-16 border border-[#2d2d2d] text-center">
+        <div class="w-16 h-16 bg-[#1f1f1f] text-[#f0f0f0] rounded-sm flex items-center justify-center mx-auto mb-8 border border-[#2d2d2d]">
+          <Ruler size={24} strokeWidth={1.5} />
+        </div>
+        <h1 class="text-3xl font-bold text-[#f0f0f0] mb-4 uppercase tracking-widest border-b border-[#2d2d2d] pb-6 inline-block">Dimensiones</h1>
+        <p class="text-[#888888] mb-12 mt-6 max-w-xl mx-auto font-light text-sm leading-relaxed">
+          Las medidas detalladas corresponden al ancho del pecho (axila a axila) y el largo total (hombro al borde inferior).
+        </p>
+
+        <div class="overflow-x-auto border border-[#2d2d2d] rounded-sm">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-[#1f1f1f] text-[#f0f0f0] text-xs uppercase tracking-widest">
+                <th class="p-5 font-bold border-b border-[#2d2d2d]">Talla</th>
+                <th class="p-5 font-bold border-b border-[#2d2d2d]">Ancho (Pecho)</th>
+                <th class="p-5 font-bold border-b border-[#2d2d2d]">Largo</th>
+              </tr>
+            </thead>
+            <tbody class="text-[#888888] font-light text-sm">
+              <tr class="border-b border-[#2d2d2d] hover:bg-[#1f1f1f] transition-colors">
+                <td class="p-5 font-medium text-[#f0f0f0]">S</td>
+                <td class="p-5">46 cm</td>
+                <td class="p-5">71 cm</td>
+              </tr>
+              <tr class="border-b border-[#2d2d2d] hover:bg-[#1f1f1f] transition-colors">
+                <td class="p-5 font-medium text-[#f0f0f0]">M</td>
+                <td class="p-5">51 cm</td>
+                <td class="p-5">74 cm</td>
+              </tr>
+              <tr class="border-b border-[#2d2d2d] hover:bg-[#1f1f1f] transition-colors">
+                <td class="p-5 font-medium text-[#f0f0f0]">L</td>
+                <td class="p-5">56 cm</td>
+                <td class="p-5">76 cm</td>
+              </tr>
+              <tr class="hover:bg-[#1f1f1f] transition-colors">
+                <td class="p-5 font-medium text-[#f0f0f0]">XL</td>
+                <td class="p-5">61 cm</td>
+                <td class="p-5">79 cm</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-12 p-6 bg-[#1f1f1f] rounded-sm text-left border border-[#2d2d2d]">
+          <p class="text-xs text-[#888888] font-light leading-relaxed uppercase tracking-wide">
+            <strong class="text-[#f0f0f0]">Referencia:</strong> Mide una prenda de uso frecuente sobre una superficie plana y compara. Margen de tolerancia de confección: +/- 2 cm.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

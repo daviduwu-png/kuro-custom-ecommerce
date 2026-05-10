@@ -1,0 +1,148 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Truck, Gem, ShieldCheck } from "lucide-react";
+import FeaturedProducts from "../components/FeaturedProducts.jsx";
+---
+
+<Layout title="Bienvenido a Kuro Custom">
+  <section class="relative overflow-hidden isolate pt-20 pb-16 md:pb-24 min-h-[34rem] md:min-h-[40rem] bg-[#0e0e0e]">
+    <div
+      class="absolute inset-x-0 top-0 h-[23rem] sm:h-[25rem] md:h-[30rem] z-0 overflow-hidden"
+    >
+      <div class="absolute inset-0 bg-[#0e0e0e]"></div>
+      <div class="absolute inset-0">
+        <img
+          src="https://images.unsplash.com/photo-1550639525-c97d455acf70?auto=format&fit=crop&q=80"
+          alt="Kuro Custom Minimalist Fashion"
+          class="w-full h-full object-cover opacity-20 grayscale"
+          loading="eager"
+        />
+      </div>
+      <div
+        class="absolute inset-0"
+        style="background-image: linear-gradient(155deg, rgba(14, 14, 14, 0.95), rgba(22, 22, 22, 0.6));"
+      >
+      </div>
+    </div>
+    <div class="absolute inset-x-0 top-[23rem] sm:top-[25rem] md:top-[30rem] bottom-0 z-0 bg-[#0e0e0e]"></div>
+
+    <div class="container mx-auto px-4 relative z-10">
+      <div class="max-w-2xl mx-auto text-center mt-8">
+        <p class="text-[#888888] uppercase tracking-[0.3em] text-xs md:text-sm mb-4 font-light">Identidad en cada fibra</p>
+        <h1 class="text-[#f0f0f0] text-4xl md:text-6xl font-bold tracking-widest leading-[1.1] uppercase">Estética Noir</h1>
+        <p class="text-[#555555] mt-6 text-base md:text-lg font-light tracking-wide max-w-lg mx-auto">
+          Minimalismo puro. Tu concepto, materializado con una calidad obsesiva.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-16 w-full px-2 sm:px-4 lg:px-8 relative z-10">
+      <FeaturedProducts client:load variant="hero" limit={15} />
+    </div>
+  </section>
+
+  <section id="destacados" class="relative py-24 bg-[#161616] overflow-hidden border-t border-[#2d2d2d]">
+    <div class="absolute right-[5%] top-12 z-0 w-64 h-64 opacity-5 pointer-events-none hidden md:block grayscale">
+      <img src="/mockups/sudadera.png" alt="" class="w-full h-full object-contain" loading="lazy" />
+    </div>
+    <div class="container mx-auto px-4 relative z-10">
+      <div class="flex justify-between items-end mb-16 border-b border-[#2d2d2d] pb-6">
+        <div>
+          <h3 class="text-2xl uppercase tracking-widest font-bold text-[#f0f0f0]">La Selección</h3>
+          <p class="text-[#888888] mt-2 font-light text-sm tracking-wide">Piezas destacadas de nuestra bóveda.</p>
+        </div>
+        <a
+          href="/catalogo"
+          class="hidden md:flex items-center text-[#f0f0f0] text-sm uppercase tracking-widest font-bold hover:text-[#888888] transition-colors group"
+        >
+          Explorar
+          <span class="ml-3 group-hover:translate-x-2 transition-transform">→</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="w-full px-2 sm:px-4 lg:px-8 relative z-10">
+      <FeaturedProducts client:load variant="new-arrivals" limit={15} />
+    </div>
+
+    <div class="container mx-auto px-4 relative z-10">
+      <div class="mt-16 text-center md:hidden">
+        <a
+          href="/catalogo"
+          class="inline-block border border-[#555555] text-[#f0f0f0] px-10 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#f0f0f0] hover:text-[#0e0e0e] transition-colors"
+        >
+          Ver todo el catálogo
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-24 bg-[#0e0e0e] border-t border-[#2d2d2d]">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-20">
+        <h3 class="text-2xl font-bold text-[#f0f0f0] uppercase tracking-widest">Manifiesto Kuro</h3>
+        <p class="text-[#888888] mt-4 max-w-2xl mx-auto font-light tracking-wide text-sm leading-relaxed">
+          Rechazamos lo ordinario. Construimos experiencias en lugar de simples prendas.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-16 text-center max-w-5xl mx-auto">
+        <div class="group">
+          <div
+            class="w-16 h-16 bg-[#161616] text-[#f0f0f0] flex items-center justify-center mx-auto mb-8 border border-[#2d2d2d] group-hover:border-[#555555] group-hover:bg-[#f0f0f0] group-hover:text-[#0e0e0e] transition-all duration-300 rounded-sm"
+          >
+            <Truck size={24} strokeWidth={1} />
+          </div>
+          <h4 class="text-sm font-bold mb-3 text-[#f0f0f0] uppercase tracking-widest">Logística Precisa</h4>
+          <p class="text-[#555555] font-light leading-relaxed text-sm">
+            Movimientos calculados. Entregas exactas. Tu pieza llegará impecable y a tiempo.
+          </p>
+        </div>
+
+        <div class="group">
+          <div
+            class="w-16 h-16 bg-[#161616] text-[#f0f0f0] flex items-center justify-center mx-auto mb-8 border border-[#2d2d2d] group-hover:border-[#555555] group-hover:bg-[#f0f0f0] group-hover:text-[#0e0e0e] transition-all duration-300 rounded-sm"
+          >
+            <Gem size={24} strokeWidth={1} />
+          </div>
+          <h4 class="text-sm font-bold mb-3 text-[#f0f0f0] uppercase tracking-widest">Calidad Obsesiva</h4>
+          <p class="text-[#555555] font-light leading-relaxed text-sm">
+            Materiales seleccionados bajo los estándares más estrictos. Perfección en cada hilo.
+          </p>
+        </div>
+
+        <div class="group">
+          <div
+            class="w-16 h-16 bg-[#161616] text-[#f0f0f0] flex items-center justify-center mx-auto mb-8 border border-[#2d2d2d] group-hover:border-[#555555] group-hover:bg-[#f0f0f0] group-hover:text-[#0e0e0e] transition-all duration-300 rounded-sm"
+          >
+            <ShieldCheck size={24} strokeWidth={1} />
+          </div>
+          <h4 class="text-sm font-bold mb-3 text-[#f0f0f0] uppercase tracking-widest">Blindaje Absoluto</h4>
+          <p class="text-[#555555] font-light leading-relaxed text-sm">
+            Tus datos son intocables. Criptografía de grado militar para cada transacción.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  import { sileo } from "sileo";
+
+  const welcomeName = sessionStorage.getItem("show_welcome");
+  if (welcomeName) {
+    sessionStorage.removeItem("show_welcome");
+    setTimeout(() => {
+      sileo.info({
+        title: `Bienvenido, ${welcomeName}.`,
+        description: "Acceso autorizado.",
+        duration: 5000,
+        styles: {
+          title: "text-[#f0f0f0] font-bold tracking-widest uppercase text-xs",
+          description: "text-[#888888] text-center block w-full text-sm font-light mt-1",
+        },
+      });
+    }, 400);
+  }
+</script>

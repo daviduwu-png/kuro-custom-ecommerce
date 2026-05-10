@@ -1,0 +1,50 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Package, RefreshCcw } from "lucide-react";
+---
+
+<Layout title="Envíos y Devoluciones | Kuro Custom">
+  <div class="bg-[#0e0e0e] min-h-screen py-20">
+    <div class="container mx-auto px-4 max-w-4xl">
+      <div class="bg-[#161616] rounded-sm p-10 md:p-16 border border-[#2d2d2d]">
+        <h1 class="text-3xl font-bold text-[#f0f0f0] mb-6 uppercase tracking-widest border-b border-[#2d2d2d] pb-6">Logística y Reembolsos</h1>
+        <p class="text-[#555555] mb-12 text-sm font-light uppercase tracking-wide">Protocolos de entrega y garantías de satisfacción.</p>
+
+        <div class="space-y-12">
+          <section>
+            <h2 class="text-lg font-bold text-[#f0f0f0] mb-6 flex items-center gap-3 uppercase tracking-widest">
+              <Package size={20} strokeWidth={1.5} className="text-[#888888]" /> Protocolo de Envío
+            </h2>
+            <ul class="list-disc pl-6 space-y-4 mt-4 text-[#888888] font-light text-sm">
+              <li><strong class="text-[#f0f0f0] font-medium">Procesamiento:</strong> Preparación y despacho en 1 a 3 días hábiles desde la confirmación de transacción.</li>
+              <li><strong class="text-[#f0f0f0] font-medium">Tiempos de entrega:</strong> Tránsito nacional estimado de 3 a 7 días hábiles según logística local.</li>
+              <li><strong class="text-[#f0f0f0] font-medium">Tarifas:</strong> Envío sin costo en adquisiciones superiores a $999.00 MXN. Tarifa plana de $150.00 MXN para montos menores.</li>
+              <li><strong class="text-[#f0f0f0] font-medium">Trazabilidad:</strong> Asignación de número de guía enviado automáticamente vía correo electrónico tras la validación.</li>
+            </ul>
+          </section>
+
+          <hr class="border-[#2d2d2d] my-8" />
+
+          <section>
+            <h2 class="text-lg font-bold text-[#f0f0f0] mb-6 flex items-center gap-3 uppercase tracking-widest">
+              <RefreshCcw size={20} strokeWidth={1.5} className="text-[#888888]" /> Devoluciones
+            </h2>
+            <p class="text-[#888888] text-sm font-light leading-relaxed">La exigencia es nuestro estándar. Si la pieza no cumple con las expectativas, estas son las condiciones de retorno:</p>
+            <ul class="list-disc pl-6 space-y-4 mt-6 text-[#888888] font-light text-sm">
+              <li><strong class="text-[#f0f0f0] font-medium">Ventana de acción:</strong> 30 días naturales desde la recepción para reportar fallas, medidas incorrectas o insatisfacción.</li>
+              <li><strong class="text-[#f0f0f0] font-medium">Estado del material:</strong> La prenda debe permanecer intacta, sin señales de uso, sin alteraciones de olor y con sus etiquetas originales.</li>
+              <li><strong class="text-[#f0f0f0] font-medium">Procedimiento:</strong> Contacta a <strong class="text-[#f0f0f0]">hello@kurocustom.com</strong> indicando ID de orden. Emitiremos una guía de retorno sin costo.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-bold text-[#f0f0f0] mb-4 uppercase tracking-widest">Restitución de Fondos</h2>
+            <p class="text-[#888888] text-sm font-light leading-relaxed">
+              Al inspeccionar el paquete de retorno y validar la integridad de la pieza, el reembolso se emite al método original en 5-10 días hábiles, sujeto a los tiempos de liquidación de cada entidad bancaria.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

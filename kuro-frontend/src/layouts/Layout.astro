@@ -1,0 +1,35 @@
+---
+import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.astro";
+import "../styles/global.css";
+import { Toaster } from "sileo";
+import "sileo/styles.css";
+---
+
+<html lang="es">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="Kuro Custom — Ropa personalizada de alta calidad. Diseña y ordena prendas únicas con tu estilo."
+    />
+    <link rel="icon" type="image/png" href="/kuro-logo.png" />
+    <title>Kuro Custom</title>
+  </head>
+  <body class="bg-[#0e0e0e] text-[#f0f0f0]">
+    <Navbar client:load />
+    <Toaster
+      client:only="react"
+      position="top-center"
+      offset={{ top: 80 }}
+      options={{ fill: "#ffffff" }}
+    />
+
+    <main class="min-h-screen">
+      <slot />
+    </main>
+
+    <Footer />
+  </body>
+</html>
