@@ -1,0 +1,74 @@
+---
+- name: Inicializar control plane (kubeadm init)
+  hosts: role_Control_Plane
+  become: true
+  vars:
+    pod_network_cidr: "10.244.0.0/16" # Flannel por defecto
+    kubeconfig_user: "ubuntu"
+  tasks:
+    - name: Inicializar Kubernetes control plane (solo una vez)
+      command: "kubeadm init --pod-network-cidr={{ pod_network_cidr }} --node-name={{ inventory_hostname }}"
+      args:
+        creates: /etc/kubernetes/admin.conf
+
+    - name: Crear directorio .kube para usuario
+      file:
+        path: "/home/{{ kubeconfig_user }}/.kube"
+        state: directory
+        owner: "{{ kubeconfig_user }}"
+        group: "{{ kubeconfig_user }}"
+        mode: "0755"
+
+    - name: Copiar kubeconfig admin.conf al usuario
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ kubeconfig_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ kubeconfig_user }}"
+        group: "{{ kubeconfig_user }}"
+        mode: "0644"
+
+    - name: Esperar a que el API Server esté listo
+      become_user: "{{ kubeconfig_user }}"
+      command: kubectl get --raw=/healthz
+      register: apiserver_health
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: apiserver_health.rc == 0
+
+    - name: Instalar CNI (Flannel)
+      become_user: "{{ kubeconfig_user }}"
+      command: "kubectl apply --validate=false -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml"
+      register: flannel_apply
+      changed_when: "'created' in flannel_apply.stdout or 'configured' in flannel_apply.stdout"
+      retries: 12
+      delay: 10
+      until: flannel_apply.rc == 0
+
+    - name: Obtener comando de join para workers
+      command: kubeadm token create --print-join-command
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: join_cmd
+      changed_when: false
+      retries: 15
+      delay: 10
+      until: join_cmd.rc == 0
+
+    - name: Guardar join command como fact del control plane
+      set_fact:
+        kubeadm_join_command: "{{ join_cmd.stdout }}"
+
+- name: Unir workers al cluster (kubeadm join)
+  hosts: role_Worker_Node
+  become: true
+  tasks:
+    - name: Unir nodo worker al cluster
+      command: "{{ hostvars[groups['role_Control_Plane'][0]].kubeadm_join_command }} --node-name={{ inventory_hostname }}"
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      register: worker_join
+      retries: 10
+      delay: 15
+      until: worker_join.rc == 0

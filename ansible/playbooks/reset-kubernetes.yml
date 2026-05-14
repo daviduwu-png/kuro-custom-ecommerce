@@ -1,0 +1,43 @@
+---
+- name: Resetear Kubernetes (kubeadm reset)
+  hosts: all
+  become: true
+  tasks:
+    - name: Detener kubelet
+      service:
+        name: kubelet
+        state: stopped
+      failed_when: false
+
+    - name: Ejecutar kubeadm reset
+      command: kubeadm reset -f
+      failed_when: false
+
+    - name: Limpiar directorios Kubernetes/CNI
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /var/lib/kubelet
+        - /etc/cni/net.d
+        - /var/lib/cni
+
+    - name: Limpiar kubeconfig del usuario ubuntu (si existe)
+      file:
+        path: /home/ubuntu/.kube
+        state: absent
+      failed_when: false
+
+    - name: Iniciar containerd
+      service:
+        name: containerd
+        state: started
+        enabled: yes
+
+    - name: Iniciar kubelet
+      service:
+        name: kubelet
+        state: started
+        enabled: yes

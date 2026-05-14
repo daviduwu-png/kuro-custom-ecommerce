@@ -10,6 +10,14 @@ resource "aws_security_group" "seguridad_kuro" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Tráfico interno entre nodos/servicios del laboratorio (K8s + RDS)
+  ingress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    self      = true
+  }
+
   # Regla de salida: Permitir todo el tráfico saliente
   egress {
     from_port   = 0

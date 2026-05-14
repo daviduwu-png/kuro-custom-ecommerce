@@ -1,0 +1,22 @@
+plugin: aws_ec2
+regions:
+  - us-east-1 # Ajustar a la región donde Terraform levantó la infra
+
+# Filtros importantes para no descubrir todas las EC2 "running" en la región.
+filters:
+  instance-state-name: running
+  tag:Proyecto: Kuro-Custom
+
+# si no existe Name, cae a IP pública
+hostnames:
+  - tag:Name
+  - public-ip-address
+
+# Fuerza SSH contra IP pública
+compose:
+  ansible_host: public_ip_address
+
+# Agrupa por el tag real que se esta usando en Terraform
+keyed_groups:
+  - key: ec2_tags.Rol
+    prefix: role

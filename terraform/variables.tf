@@ -9,3 +9,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "ec2_key_name" {
+  description = "Nombre del Key Pair existente en AWS para acceder por SSH a las instancias EC2"
+  type        = string
+  default     = null
+}
