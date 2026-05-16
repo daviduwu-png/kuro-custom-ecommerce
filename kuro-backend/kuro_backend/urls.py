@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
@@ -31,8 +32,13 @@ class GoogleLogin(SocialLoginView):
     callback_url = settings.FRONTEND_URL # Callback del Frontend (leído de enviroment)
     client_class = OAuth2Client
 
+def health_check(request):
+    return JsonResponse({"status": "ok"})
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Health check para Kubernetes probes
+    path('api/health/', health_check, name='health_check'),
     # Rutas de la app store (productos, órdenes, personalizaciones)
     path('api/', include('store.urls')),
     # Autenticación

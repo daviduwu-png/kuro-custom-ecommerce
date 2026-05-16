@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kuro-backend-config
+  namespace: kuro
+data:
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  FRONTEND_URL: "https://kurocustom.uk"
+  BACKEND_URL: "https://kurocustom.uk"
+  CORS_ALLOWED_ORIGINS: "https://kurocustom.uk,https://www.kurocustom.uk"
+  CSRF_TRUSTED_ORIGINS: "https://kurocustom.uk,https://www.kurocustom.uk"
+  DB_HOST: "kuro-custom-db-instance.c21ys26uqwqs.us-east-1.rds.amazonaws.com"
+  DB_NAME: "kurodb"
+  DB_USER: "postgres"
+  DB_PORT: "5432"
+  SECURE_SSL_REDIRECT: "False"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kuro-frontend-config
+  namespace: kuro
+data:
+  PUBLIC_API_URL: "https://kurocustom.uk/api"
+  API_URL_INTERNAL: "http://kuro-backend:8000/api"

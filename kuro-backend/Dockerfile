@@ -21,5 +21,8 @@ COPY . .
 # Exponer el puerto donde correrá el backend
 EXPOSE 8000
 
+# Recolectar archivos estáticos para que WhiteNoise los sirva
+RUN python manage.py collectstatic --noinput
+
 # Comando por defecto para producción usando Gunicorn 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "kuro_backend.wsgi:application"]

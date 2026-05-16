@@ -17,3 +17,8 @@ output "worker_instance_id" {
   description = "Instance ID del nodo Worker"
   value       = aws_instance.kuro_worker.id
 }
+
+output "alb_dns_name" {
+  description = "El DNS name del Application Load Balancer"
+  value       = aws_lb.kuro_alb.dns_name
+}

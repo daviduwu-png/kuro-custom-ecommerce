@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kuro-backend
+  namespace: kuro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuro-backend
+  template:
+    metadata:
+      labels:
+        app: kuro-backend
+    spec:
+      containers:
+        - name: backend
+          image: davidnicanor123/kuro-backend:1.0.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: kuro-backend-config
+            - secretRef:
+                name: kuro-backend-secrets
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"

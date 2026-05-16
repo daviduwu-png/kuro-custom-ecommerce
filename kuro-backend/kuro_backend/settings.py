@@ -220,12 +220,12 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 # ── Seguridad HTTPS (solo activo cuando DEBUG=False) ─────────────────────────
 if not DEBUG:
-    SECURE_SSL_REDIRECT          = True   # Redirige HTTP → HTTPS
+    SECURE_SSL_REDIRECT          = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
     SECURE_HSTS_SECONDS          = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD          = True
-    SESSION_COOKIE_SECURE        = True   # Cookie de sesión solo por HTTPS
-    CSRF_COOKIE_SECURE           = True   # Cookie CSRF solo por HTTPS
+    SESSION_COOKIE_SECURE        = False  
+    CSRF_COOKIE_SECURE           = False   
     SESSION_COOKIE_SAMESITE      = 'Lax'
     CSRF_COOKIE_SAMESITE         = 'Lax'
     SECURE_BROWSER_XSS_FILTER    = True
