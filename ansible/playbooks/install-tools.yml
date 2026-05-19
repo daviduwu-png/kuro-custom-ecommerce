@@ -2,6 +2,8 @@
 - name: Instalar Containerd y herramientas de Kubernetes
   hosts: all
   become: true
+  vars:
+    kubernetes_version: "v1.29"
   tasks:
     - name: Instalar dependencias base
       apt:
@@ -43,35 +45,34 @@
         group: root
         mode: "0755"
 
-    - name: Configurar containerd para usar systemd como cgroup driver
-      shell: |
-        containerd config default > /etc/containerd/config.toml
-      args:
-        creates: /etc/containerd/config.toml
-      notify: Restart containerd
-
-    - name: Habilitar plugin CRI en containerd (requerido por kubeadm/kubelet)
-      replace:
-        path: /etc/containerd/config.toml
-        regexp: '^disabled_plugins\s*=\s*\["cri"\]\s*$'
-        replace: "disabled_plugins = []"
-      notify: Restart containerd
-
-    - name: Habilitar SystemdCgroup en containerd
-      replace:
-        path: /etc/containerd/config.toml
-        regexp: '^(\s*SystemdCgroup\s*=\s*)false\s*$'
-        replace: '\1true'
+    - name: Configurar containerd con template optimizado para Kubernetes
+      copy:
+        dest: /etc/containerd/config.toml
+        content: |
+          version = 2
+          [plugins]
+            [plugins."io.containerd.grpc.v1.cri"]
+              systemd_cgroup = true
+          [plugins."io.containerd.grpc.v1.cri".containerd]
+            default_runtime_name = "runc"
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+              [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+                runtime_type = "io.containerd.runc.v2"
+                [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+                  SystemdCgroup = true
+        owner: root
+        group: root
+        mode: "0644"
       notify: Restart containerd
 
     - name: Agregar clave GPG de Kubernetes
       apt_key:
-        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key # Ajustar a la versión deseada
+        url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/Release.key"
         state: present
 
     - name: Agregar repositorio de Kubernetes
       apt_repository:
-        repo: deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+        repo: "deb https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/ /"
         state: present
 
     - name: Actualizar caché APT (Kubernetes repo)
@@ -85,6 +86,37 @@
           - kubeadm
           - kubectl
         state: present
+
+    - name: Asegurar directorio de drop-ins de kubelet
+      file:
+        path: /etc/systemd/system/kubelet.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Comprobar si existe resolv.conf de systemd-resolved
+      stat:
+        path: /run/systemd/resolve/resolv.conf
+      register: systemd_resolv
+
+    - name: Configurar kubelet para usar resolv.conf de systemd-resolved
+      copy:
+        dest: /etc/systemd/system/kubelet.service.d/20-resolv-conf.conf
+        content: |
+          [Service]
+          Environment="KUBELET_EXTRA_ARGS=--resolv-conf=/run/systemd/resolve/resolv.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      when: systemd_resolv.stat.exists
+
+    - name: Recargar systemd y reiniciar kubelet
+      systemd:
+        daemon_reload: true
+        name: kubelet
+        state: restarted
+        enabled: yes
 
     - name: Retener las versiones (Hold) para evitar actualizaciones accidentales
       dpkg_selections:

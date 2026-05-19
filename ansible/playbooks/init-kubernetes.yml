@@ -7,7 +7,11 @@
     kubeconfig_user: "ubuntu"
   tasks:
     - name: Inicializar Kubernetes control plane (solo una vez)
-      command: "kubeadm init --pod-network-cidr={{ pod_network_cidr }} --node-name={{ inventory_hostname }}"
+      command: >
+        kubeadm init
+        --pod-network-cidr={{ pod_network_cidr }}
+        --node-name={{ inventory_hostname }}
+        --apiserver-advertise-address={{ ansible_default_ipv4.address }}
       args:
         creates: /etc/kubernetes/admin.conf
 
@@ -28,18 +32,99 @@
         group: "{{ kubeconfig_user }}"
         mode: "0644"
 
-    - name: Esperar a que el API Server esté listo
+    # CRÍTICO: Parchear manifests con probes tolerantes y 127.0.0.1 antes de que kubelet los levante para evitar fallos de etcd/apiserver.
+
+    - name: Parchear etcd – probes más tolerantes
+      shell: |
+        python3 << 'PYEOF'
+        import yaml, copy
+
+        path = "/etc/kubernetes/manifests/etcd.yaml"
+        with open(path) as f:
+            manifest = yaml.safe_load(f)
+
+        container = manifest["spec"]["containers"][0]
+
+        for probe_key in ("livenessProbe", "startupProbe"):
+            probe = container.get(probe_key, {})
+            probe["initialDelaySeconds"] = 60
+            probe["timeoutSeconds"]      = 30
+            probe["failureThreshold"]    = 40
+            container[probe_key] = probe
+
+        with open(path, "w") as f:
+            yaml.dump(manifest, f, default_flow_style=False)
+        print("etcd manifest patched OK")
+        PYEOF
+      args:
+        executable: /bin/bash
+
+    - name: Parchear kube-apiserver – usar 127.0.0.1, eliminar readinessProbe agresivo
+      shell: |
+        python3 << 'PYEOF'
+        import yaml
+
+        path = "/etc/kubernetes/manifests/kube-apiserver.yaml"
+        with open(path) as f:
+            manifest = yaml.safe_load(f)
+
+        container = manifest["spec"]["containers"][0]
+
+        # Liveness: 127.0.0.1, esperar 120 s antes de empezar
+        container["livenessProbe"] = {
+            "failureThreshold": 8,
+            "httpGet": {
+                "host":   "127.0.0.1",
+                "path":   "/livez",
+                "port":   6443,
+                "scheme": "HTTPS",
+            },
+            "initialDelaySeconds": 120,
+            "periodSeconds":       10,
+            "timeoutSeconds":      15,
+        }
+
+        # Startup: 127.0.0.1, arranca a checar rápido pero tolera 5 min
+        container["startupProbe"] = {
+            "failureThreshold": 30,
+            "httpGet": {
+                "host":   "127.0.0.1",
+                "path":   "/livez",
+                "port":   6443,
+                "scheme": "HTTPS",
+            },
+            "initialDelaySeconds": 10,
+            "periodSeconds":       10,
+            "timeoutSeconds":      15,
+        }
+
+        # Eliminar readinessProbe – en un nodo único solo causa falsos negativos
+        container.pop("readinessProbe", None)
+
+        with open(path, "w") as f:
+            yaml.dump(manifest, f, default_flow_style=False)
+        print("kube-apiserver manifest patched OK")
+        PYEOF
+      args:
+        executable: /bin/bash
+
+    - name: Recargar kubelet para que aplique los manifests parcheados
+      service:
+        name: kubelet
+        state: restarted
+
+    - name: Esperar a que el API Server esté completamente listo
       become_user: "{{ kubeconfig_user }}"
       command: kubectl get --raw=/healthz
       register: apiserver_health
       changed_when: false
-      retries: 30
-      delay: 5
+      retries: 40
+      delay: 10
       until: apiserver_health.rc == 0
 
     - name: Instalar CNI (Flannel)
       become_user: "{{ kubeconfig_user }}"
-      command: "kubectl apply --validate=false -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml"
+      command: "kubectl apply --validate=false -f https://raw.githubusercontent.com/flannel-io/flannel/v0.24.4/Documentation/kube-flannel.yml"
       register: flannel_apply
       changed_when: "'created' in flannel_apply.stdout or 'configured' in flannel_apply.stdout"
       retries: 12
@@ -59,6 +144,27 @@
     - name: Guardar join command como fact del control plane
       set_fact:
         kubeadm_join_command: "{{ join_cmd.stdout }}"
+
+    - name: Instalar Metrics Server (Requerido para HPA)
+      become_user: "{{ kubeconfig_user }}"
+      command: "kubectl apply --validate=false -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml"
+      register: metrics_apply
+      changed_when: "'created' in metrics_apply.stdout or 'configured' in metrics_apply.stdout"
+      retries: 10
+      delay: 10
+      until: metrics_apply.rc == 0
+
+    - name: Parchear Metrics Server para aceptar TLS inseguro (requerido por kubeadm)
+      become_user: "{{ kubeconfig_user }}"
+      command: >
+        kubectl patch -n kube-system deployment metrics-server
+        --type='json'
+        -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+      register: metrics_patch
+      changed_when: "'patched' in metrics_patch.stdout"
+      retries: 10
+      delay: 10
+      until: metrics_patch.rc == 0
 
 - name: Unir workers al cluster (kubeadm join)
   hosts: role_Worker_Node

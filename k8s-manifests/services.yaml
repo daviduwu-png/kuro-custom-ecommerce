@@ -4,13 +4,14 @@ metadata:
   name: kuro-backend
   namespace: kuro
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: kuro-backend
   ports:
     - name: http
       port: 8000
       targetPort: 8000
+      nodePort: 30800
 ---
 apiVersion: v1
 kind: Service
@@ -18,10 +19,11 @@ metadata:
   name: kuro-frontend
   namespace: kuro
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: kuro-frontend
   ports:
     - name: http
       port: 80
       targetPort: 80
+      nodePort: 30080

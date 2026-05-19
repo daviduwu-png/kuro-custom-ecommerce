@@ -1,10 +1,8 @@
 resource "aws_instance" "kuro_control_plane" {
   ami           = "ami-04b70fa74e45c3917"
-  instance_type = "t3.small"
+  instance_type = "m7i-flex.large"
 
   key_name = var.ec2_key_name
-
-  iam_instance_profile = aws_iam_instance_profile.kuro_ccm.name
 
   vpc_security_group_ids = [aws_security_group.seguridad_kuro.id]
 
@@ -23,11 +21,9 @@ resource "aws_instance" "kuro_control_plane" {
 
 resource "aws_instance" "kuro_worker" {
   ami           = "ami-04b70fa74e45c3917"
-  instance_type = "t3.small"
+  instance_type = "m7i-flex.large"
 
   key_name = var.ec2_key_name
-
-  iam_instance_profile = aws_iam_instance_profile.kuro_ccm.name
 
   vpc_security_group_ids = [aws_security_group.seguridad_kuro.id]
 

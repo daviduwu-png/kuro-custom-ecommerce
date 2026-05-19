@@ -28,14 +28,15 @@ resource "aws_security_group" "seguridad_kuro" {
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    self        = true
+    description = "Kubernetes API Server - Solo trafico interno entre nodos"
   }
 
   ingress {
-    from_port   = 30000
-    to_port     = 32767
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 30000
+    to_port         = 32767
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   # Tráfico interno entre nodos/servicios del laboratorio (K8s + RDS)

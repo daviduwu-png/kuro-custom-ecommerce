@@ -1,0 +1,4 @@
+---
+- import_playbook: playbooks/hardening.yml
+- import_playbook: playbooks/install-tools.yml
+- import_playbook: playbooks/init-kubernetes.yml
