@@ -15,3 +15,8 @@ variable "ec2_key_name" {
   type        = string
   default     = null
 }
+
+variable "allowed_ssh_cidr" {
+  description = "CIDR desde el cual se permite SSH a las instancias EC2. Usar la IP pública del operador (ej: '203.0.113.5/32'). NUNCA usar '0.0.0.0/0' en produccion."
+  type        = string
+}

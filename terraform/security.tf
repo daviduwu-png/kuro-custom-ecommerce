@@ -2,12 +2,13 @@ resource "aws_security_group" "seguridad_kuro" {
   name        = "sg_kuro_custom"
   description = "Grupo de seguridad base para nodos de Kuro Custom"
 
-  # Regla de entrada: Permitir tráfico SSH
+  # Regla de entrada: SSH restringido a la IP del operador
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.allowed_ssh_cidr]
+    description = "SSH solo desde IP autorizada del operador"
   }
 
   ingress {

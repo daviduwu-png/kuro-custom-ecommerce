@@ -2,8 +2,8 @@
 - name: Instalar Containerd y herramientas de Kubernetes
   hosts: all
   become: true
-  vars:
-    kubernetes_version: "v1.29"
+  # NOTA: La variable 'kubernetes_version' se define en:
+  # ansible/inventory/group_vars/all.yml
   tasks:
     - name: Instalar dependencias base
       apt:

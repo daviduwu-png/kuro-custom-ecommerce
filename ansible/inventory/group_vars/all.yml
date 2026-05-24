@@ -1,0 +1,35 @@
+---
+# Variables globales del cluster Kuro Custom
+# Este archivo es la ÚNICA fuente de verdad para versiones de componentes.
+# Antes de cambiar kubernetes_version, verificar la matriz de compatibilidad:
+# https://kubernetes.io/releases/version-skew-policy/
+#
+# Matriz de compatibilidad validada para este proyecto:
+#
+#   Kubernetes | Containerd | Flannel  | Metrics Server
+#   -----------|------------|----------|---------------
+#   v1.29      | >= 1.6.x   | v0.24.4  | v0.7.2
+#   v1.30      | >= 1.7.x   | v0.25.x  | v0.7.2+
+#   v1.31      | >= 1.7.x   | v0.26.x  | v0.7.2+
+#
+# REGLA: Si cambias kubernetes_version, actualiza también flannel_version
+# y metrics_server_version. Usa SIEMPRE el formato "vX.Y" (sin patch) para el repo APT.
+
+
+# Version del repositorio APT de Kubernetes (formato: "vX.Y")
+# Controla: kubelet, kubeadm, kubectl
+kubernetes_version: "v1.29"
+
+# Versión de Flannel CNI — debe ser compatible con la versión de K8s
+# Referencia: https://github.com/flannel-io/flannel/releases
+flannel_version: "v0.24.4"
+
+# Versión de Metrics Server
+# Referencia: https://github.com/kubernetes-sigs/metrics-server/releases
+metrics_server_version: "v0.7.2"
+
+# Usuario del sistema operativo en las instancias EC2
+kubeconfig_user: "ubuntu"
+
+# CIDR para la red de pods (Flannel default)
+pod_network_cidr: "10.244.0.0/16"

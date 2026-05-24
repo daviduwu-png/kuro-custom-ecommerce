@@ -1,0 +1,112 @@
+name: Despliegue Capa 1 y 2 (Infra y OS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Acción a realizar (Crear o Destruir Infraestructura)"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  terraform-ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Apply / Destroy
+        working-directory: ./terraform
+        run: terraform ${{ github.event.inputs.action }} -auto-approve
+        env:
+          TF_VAR_db_user: ${{ secrets.DB_USER }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_ec2_key_name: "kuro-custom-key"
+          TF_VAR_allowed_ssh_cidr: ${{ secrets.ALLOWED_SSH_CIDR }}
+
+      # Los runners de GitHub Actions tienen IPs dinámicas que cambian cada
+      # ejecución. La solución de mejores prácticas es:
+      #   1. Obtener la IP actual del runner
+      #   2. Abrirla TEMPORALMENTE en el security group
+      #   3. Correr Ansible
+      #   4. SIEMPRE cerrarla al final (if: always()), incluso si Ansible falla
+      # Esto evita dejar el puerto 22 abierto si el job falla a mitad.
+
+      - name: Instalar Ansible y dependencias para inventario dinámico de AWS
+        if: github.event.inputs.action == 'apply'
+        run: |
+          pip install --quiet ansible boto3 botocore
+          ansible-galaxy collection install amazon.aws --quiet
+
+      - name: Configurar llave SSH para Ansible
+        if: github.event.inputs.action == 'apply'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/kuro-custom-key.pem
+          chmod 600 ~/.ssh/kuro-custom-key.pem
+
+      - name: Abrir SSH temporal para el runner de GitHub Actions
+        id: ssh-open
+        if: github.event.inputs.action == 'apply'
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)/32"
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=sg_kuro_custom" \
+            --query "SecurityGroups[0].GroupId" \
+            --output text)
+
+          echo "Runner IP: $RUNNER_IP"
+          echo "Security Group: $SG_ID"
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "$RUNNER_IP" \
+            --group-rule-description "Temporal: GitHub Actions runner - auto-eliminado al final del job"
+
+          # Exportar variables para que los siguientes pasos las usen
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+
+      - name: Ejecutar Ansible Playbooks (Capa 2)
+        if: github.event.inputs.action == 'apply'
+        working-directory: ./ansible
+        run: |
+          echo "Esperando 60 segundos a que las EC2 levanten el servicio SSH..."
+          sleep 60
+          ansible-playbook site.yml
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+
+      # Este paso corre SIEMPRE al final (incluso si Ansible falla)
+      - name: Cerrar SSH temporal del runner
+        if: always() && github.event.inputs.action == 'apply' && steps.ssh-open.outcome == 'success'
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "$RUNNER_IP" \
+          || echo "La regla ya no existe"
+        env:
+          SG_ID: ${{ env.SG_ID }}
+          RUNNER_IP: ${{ env.RUNNER_IP }}
