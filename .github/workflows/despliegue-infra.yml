@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      NODE_OPTIONS: "--no-deprecation"
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
@@ -57,7 +58,7 @@ jobs:
         run: |
           # --break-system-packages es necesario en Ubuntu 22.04+ (PEP 668)
           pip install --quiet ansible boto3 botocore --break-system-packages
-          ansible-galaxy collection install amazon.aws --quiet
+          ansible-galaxy collection install amazon.aws
 
       - name: Configurar llave SSH para Ansible
         if: github.event.inputs.action == 'apply'
