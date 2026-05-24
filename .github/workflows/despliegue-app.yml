@@ -93,8 +93,8 @@ jobs:
 
       - name: Inyectar secrets reales en secret.yaml (desde GitHub Secrets)
         run: |
-          sed -i "s|DEPLOY_TIME_SECRET_KEY|${{ secrets.DJANGO_SECRET_KEY }}|g" k8s-manifests/secret.yaml
-          sed -i "s|DEPLOY_TIME_DB_PASSWORD|${{ secrets.DB_PASSWORD }}|g" k8s-manifests/secret.yaml
+          sed -i "s|DEPLOY_TIME_SECRET_KEY|${{ secrets.DJANGO_SECRET_KEY }}|g" k8s-manifests/02-secret.yaml
+          sed -i "s|DEPLOY_TIME_DB_PASSWORD|${{ secrets.DB_PASSWORD }}|g" k8s-manifests/02-secret.yaml
 
       - name: Copiar manifiestos y Aplicar (Capa 3)
         run: |
