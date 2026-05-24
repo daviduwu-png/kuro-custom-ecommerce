@@ -12,6 +12,8 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
@@ -39,6 +41,8 @@ jobs:
   deploy-kubernetes:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4

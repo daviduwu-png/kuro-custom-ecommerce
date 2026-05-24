@@ -15,6 +15,8 @@ on:
 jobs:
   terraform-ansible:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
@@ -53,7 +55,8 @@ jobs:
       - name: Instalar Ansible y dependencias para inventario dinámico de AWS
         if: github.event.inputs.action == 'apply'
         run: |
-          pip install --quiet ansible boto3 botocore
+          # --break-system-packages es necesario en Ubuntu 22.04+ (PEP 668)
+          pip install --quiet ansible boto3 botocore --break-system-packages
           ansible-galaxy collection install amazon.aws --quiet
 
       - name: Configurar llave SSH para Ansible
