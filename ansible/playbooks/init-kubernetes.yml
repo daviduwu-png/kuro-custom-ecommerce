@@ -1,6 +1,6 @@
 ---
 - name: Inicializar control plane (kubeadm init)
-  hosts: role_Control_Plane, role_control_plane
+  hosts: kuro-control-plane-01
   become: true
   # NOTA: Las variables pod_network_cidr, flannel_version y kubeconfig_user
   # se definen en ansible/inventory/group_vars/all.yml
@@ -177,11 +177,11 @@
 
 
 - name: Unir workers al cluster (kubeadm join)
-  hosts: role_Worker_Node, role_worker_node
+  hosts: kuro-app-node-01
   become: true
   tasks:
     - name: Unir nodo worker al cluster
-      command: "{{ hostvars[(groups['role_Control_Plane'] | default(groups['role_control_plane'], true))[0]].kubeadm_join_command }} --node-name={{ inventory_hostname }}"
+      command: "{{ hostvars['kuro-control-plane-01'].kubeadm_join_command }} --node-name={{ inventory_hostname }}"
       args:
         creates: /etc/kubernetes/kubelet.conf
       register: worker_join
@@ -194,7 +194,7 @@
 # explicitamente por un administrador o por este play.
 # Sin esta aprobacion, Metrics Server no puede hacer scraping de los kubelets.
 - name: Aprobar CSRs de kubelet-serving (habilita Metrics Server con TLS real)
-  hosts: role_Control_Plane, role_control_plane
+  hosts: kuro-control-plane-01
   become: false
   tasks:
     - name: Esperar a que todos los nodos generen sus CSRs de serving
@@ -203,7 +203,7 @@
         kubectl get csr --no-headers 2>/dev/null \
           | grep -c 'Pending' || echo 0
       register: pending_count
-      until: pending_count.stdout | int >= ((groups['role_Worker_Node'] | default(groups['role_worker_node'], true)) | length + 1)
+      until: pending_count.stdout | int >= 2
       retries: 20
       delay: 10
       changed_when: false
