@@ -82,10 +82,7 @@ jobs:
 
           aws ec2 authorize-security-group-ingress \
             --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 22 \
-            --cidr "$RUNNER_IP" \
-            --group-rule-description "Temporal: GitHub Actions runner - auto-eliminado al final del job"
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP,Description='Temporal: GitHub Actions runner - auto-eliminado al final del job'}]"
 
           # Exportar variables para que los siguientes pasos las usen
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
