@@ -71,6 +71,26 @@ jobs:
           echo "La IP detectada es: $IP"
           echo "ip=$IP" >> $GITHUB_OUTPUT
 
+      - name: Abrir SSH temporal para el runner de GitHub Actions
+        id: ssh-open
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)/32"
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=sg_kuro_custom" \
+            --query "SecurityGroups[0].GroupId" \
+            --output text)
+
+          echo "Runner IP: $RUNNER_IP"
+          echo "Security Group: $SG_ID"
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP,Description='Temporal: GitHub Actions runner - auto-eliminado al final del job (App)'}]"
+
+          # Exportar variables para que los siguientes pasos las usen
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+
       - name: Inyectar secrets reales en secret.yaml (desde GitHub Secrets)
         run: |
           sed -i "s|DEPLOY_TIME_SECRET_KEY|${{ secrets.DJANGO_SECRET_KEY }}|g" k8s-manifests/secret.yaml
@@ -81,3 +101,16 @@ jobs:
           scp -o StrictHostKeyChecking=no -i ~/.ssh/kuro-custom-key.pem -r k8s-manifests ubuntu@${{ steps.get-ip.outputs.ip }}:/home/ubuntu/
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/kuro-custom-key.pem ubuntu@${{ steps.get-ip.outputs.ip }} "kubectl apply -f k8s-manifests/"
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/kuro-custom-key.pem ubuntu@${{ steps.get-ip.outputs.ip }} "kubectl rollout restart deployment -n kuro kuro-backend kuro-frontend"
+
+      - name: Cerrar SSH temporal del runner
+        if: always() && steps.ssh-open.outcome == 'success'
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "$RUNNER_IP" \
+          || echo "La regla ya no existe"
+        env:
+          SG_ID: ${{ env.SG_ID }}
+          RUNNER_IP: ${{ env.RUNNER_IP }}
