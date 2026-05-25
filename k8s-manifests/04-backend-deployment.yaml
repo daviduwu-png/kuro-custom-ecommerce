@@ -13,6 +13,20 @@ spec:
       labels:
         app: kuro-backend
     spec:
+      initContainers:
+        - name: run-migrations
+          image: davidnicanor123/kuro-backend:1.0.3
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              python manage.py migrate --noinput
+              python manage.py createsuperuser --noinput || true
+          envFrom:
+            - configMapRef:
+                name: kuro-backend-config
+            - secretRef:
+                name: kuro-backend-secrets
       containers:
         - name: backend
           image: davidnicanor123/kuro-backend:1.0.3
