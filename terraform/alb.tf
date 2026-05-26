@@ -46,7 +46,7 @@ resource "aws_lb" "kuro_alb" {
 
   access_logs {
     bucket  = aws_s3_bucket.alb_logs.id
-    prefix  = "kuro-alb-logs/"
+    prefix  = "kuro-alb-logs"
     enabled = true
   }
 
@@ -184,10 +184,7 @@ resource "aws_s3_bucket" "alb_logs" {
   }
 }
 
-resource "aws_s3_bucket_acl" "alb_logs_acl" {
-  bucket = aws_s3_bucket.alb_logs.id
-  acl    = "private"
-}
+
 
 resource "aws_s3_bucket_versioning" "alb_logs_versioning" {
   bucket = aws_s3_bucket.alb_logs.id
@@ -226,8 +223,7 @@ resource "aws_s3_bucket_policy" "alb_logs_policy" {
           AWS = "arn:aws:iam::127311923021:root"
         }
         Action = [
-          "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObject"
         ]
         Resource = "${aws_s3_bucket.alb_logs.arn}/*"
       }
