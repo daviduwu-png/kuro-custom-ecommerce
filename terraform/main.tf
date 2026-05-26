@@ -1,4 +1,18 @@
 terraform {
+  # use_lockfile requiere Terraform >= 1.10
+  required_version = ">= 1.10"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+
   # Backend remoto en S3 — permite que GitHub Actions y maquina local compartan el mismo estado.
   backend "s3" {
     bucket       = "kuro-custom-tfstate"

@@ -2,11 +2,11 @@ name: Despliegue Capa 0 y 3 (App y K8s)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
-      - 'kuro-frontend/**'
-      - 'kuro-backend/**'
-      - 'k8s-manifests/**'
+      - "kuro-frontend/**"
+      - "kuro-backend/**"
+      - "k8s-manifests/**"
   workflow_dispatch:
 
 jobs:
@@ -96,6 +96,7 @@ jobs:
           sed -i "s|DEPLOY_TIME_SECRET_KEY|${{ secrets.DJANGO_SECRET_KEY }}|g" k8s-manifests/02-secret.yaml
           sed -i "s|DEPLOY_TIME_DB_PASSWORD|${{ secrets.DB_PASSWORD }}|g" k8s-manifests/02-secret.yaml
           sed -i "s|DEPLOY_TIME_SUPERUSER_PASSWORD|${{ secrets.DJANGO_SUPERUSER_PASSWORD }}|g" k8s-manifests/02-secret.yaml
+          sed -i "s|DEPLOY_TIME_DB_HOST|${{ secrets.DB_HOST }}|g" k8s-manifests/01-configmap.yaml
 
       - name: Copiar manifiestos y Aplicar (Capa 3)
         run: |

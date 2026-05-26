@@ -13,6 +13,9 @@ spec:
       labels:
         app: kuro-backend
     spec:
+      # Nunca ejecutar pods como root
+      securityContext:
+        runAsNonRoot: true
       initContainers:
         - name: run-migrations
           image: davidnicanor123/kuro-backend:1.0.3
@@ -27,6 +30,10 @@ spec:
                 name: kuro-backend-config
             - secretRef:
                 name: kuro-backend-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: backend
           image: davidnicanor123/kuro-backend:1.0.3
@@ -38,14 +45,20 @@ spec:
                 name: kuro-backend-config
             - secretRef:
                 name: kuro-backend-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /api/health/
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /api/health/
               port: 8000
             initialDelaySeconds: 60
             periodSeconds: 20

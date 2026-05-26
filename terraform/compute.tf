@@ -1,6 +1,7 @@
 resource "aws_instance" "kuro_control_plane" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "m7i-flex.large"
+  subnet_id     = aws_subnet.public_a.id  # us-east-1a
 
   key_name = var.ec2_key_name
 
@@ -22,6 +23,7 @@ resource "aws_instance" "kuro_control_plane" {
 resource "aws_instance" "kuro_worker" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "m7i-flex.large"
+  subnet_id     = aws_subnet.public_b.id  # us-east-1b
 
   key_name = var.ec2_key_name
 

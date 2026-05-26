@@ -13,13 +13,3 @@ resource "aws_acm_certificate" "kuro_cert" {
   }
 }
 
-output "acm_validation_records" {
-  description = "Registros DNS necesarios para validar el certificado SSL en Cloudflare"
-  value = {
-    for dvo in aws_acm_certificate.kuro_cert.domain_validation_options : dvo.domain_name => {
-      Name   = dvo.resource_record_name
-      Type   = dvo.resource_record_type
-      Target = dvo.resource_record_value
-    }
-  }
-}

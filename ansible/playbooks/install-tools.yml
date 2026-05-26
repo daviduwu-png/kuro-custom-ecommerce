@@ -18,15 +18,26 @@
           - ebtables
         state: present
 
-    - name: Agregar clave GPG oficial de Docker (para containerd)
-      apt_key:
+    - name: Crear directorio de keyrings del sistema
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Descargar clave GPG de Docker (método moderno, Ubuntu 22.04+)
+      get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+        force: false
 
     - name: Agregar repositorio de Docker
       apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
+        filename: docker
 
     - name: Actualizar caché APT (Docker repo)
       apt:
@@ -65,15 +76,18 @@
         mode: "0644"
       notify: Restart containerd
 
-    - name: Agregar clave GPG de Kubernetes
-      apt_key:
+    - name: Descargar clave GPG de Kubernetes (método moderno)
+      get_url:
         url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/Release.key"
-        state: present
+        dest: "/etc/apt/keyrings/kubernetes-{{ kubernetes_version }}.asc"
+        mode: "0644"
+        force: false
 
     - name: Agregar repositorio de Kubernetes
       apt_repository:
-        repo: "deb https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/ /"
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-{{ kubernetes_version }}.asc] https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/ /"
         state: present
+        filename: "kubernetes-{{ kubernetes_version }}"
 
     - name: Actualizar caché APT (Kubernetes repo)
       apt:
