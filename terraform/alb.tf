@@ -5,7 +5,7 @@ resource "aws_security_group" "alb_sg" {
   vpc_id      = aws_vpc.kuro_vpc.id
 
   ingress {
-    description = "CIDRs permitidos para HTTP (por defecto público; restringir a IPs conocidas o CloudFront en producción)"
+    description = "CIDRs permitidos para HTTP (por defecto publico; restringir a IPs conocidas o CloudFront en produccion)"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -13,7 +13,7 @@ resource "aws_security_group" "alb_sg" {
   }
 
   ingress {
-    description = "CIDRs permitidos para HTTPS (por defecto público; restringir a IPs conocidas o CloudFront en producción)"
+    description = "CIDRs permitidos para HTTPS (por defecto publico; restringir a IPs conocidas o CloudFront en produccion)"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"

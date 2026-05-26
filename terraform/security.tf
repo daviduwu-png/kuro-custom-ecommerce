@@ -34,7 +34,7 @@ resource "aws_security_group" "seguridad_kuro" {
     to_port     = 0
     protocol    = "-1"
     self        = true
-    description = "Tráfico interno irrestricto entre nodos del cluster (K8s inter-node, etcd, RDS)"
+    description = "Trafico interno irrestricto entre nodos del cluster (K8s inter-node, etcd, RDS)"
   }
 
   # Regla de salida: Permitir todo el tráfico saliente
