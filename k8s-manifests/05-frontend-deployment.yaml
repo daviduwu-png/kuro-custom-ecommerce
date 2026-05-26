@@ -17,7 +17,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: frontend
-          image: davidnicanor123/kuro-frontend:1.0.5
+          image: davidnicanor123/kuro-frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000

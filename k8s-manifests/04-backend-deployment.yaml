@@ -18,8 +18,8 @@ spec:
         runAsNonRoot: true
       initContainers:
         - name: run-migrations
-          image: davidnicanor123/kuro-backend:1.0.3
-          imagePullPolicy: IfNotPresent
+          image: davidnicanor123/kuro-backend:latest
+          imagePullPolicy: Always
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -36,8 +36,8 @@ spec:
               drop: ["ALL"]
       containers:
         - name: backend
-          image: davidnicanor123/kuro-backend:1.0.3
-          imagePullPolicy: IfNotPresent
+          image: davidnicanor123/kuro-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
