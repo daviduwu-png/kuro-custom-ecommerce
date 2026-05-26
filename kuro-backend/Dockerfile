@@ -24,8 +24,8 @@ EXPOSE 8000
 # Recolectar archivos estáticos para que WhiteNoise los sirva
 RUN SECRET_KEY="dummy-key-for-build" python manage.py collectstatic --noinput
 
-RUN useradd -m -r kuro && chown -R kuro:kuro /app
-USER kuro
+RUN useradd -m -r -u 1000 kuro && chown -R kuro:kuro /app
+USER 1000
 
 # Comando por defecto para producción usando Gunicorn 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "kuro_backend.wsgi:application"]
