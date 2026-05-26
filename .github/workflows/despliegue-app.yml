@@ -37,6 +37,10 @@ jobs:
           context: ./kuro-frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kuro-frontend:latest
+          build-args: |
+            PUBLIC_API_URL=${{ secrets.PUBLIC_API_URL }}
+            PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.PUBLIC_GOOGLE_CLIENT_ID }}
+            PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.PUBLIC_STRIPE_PUBLISHABLE_KEY }}
 
   deploy-kubernetes:
     needs: build-and-push

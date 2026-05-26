@@ -1,12 +1,21 @@
-# Etapa 1: Construcci3n (Build)
+# Etapa 1: Construcci 3n (Build)
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copiar dependencias e instalarlas primero (aprovecha el cach9 de Docker)
+# Argumentos de Build para Vite/Astro
+ARG PUBLIC_API_URL
+ARG PUBLIC_GOOGLE_CLIENT_ID
+ARG PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+ENV PUBLIC_API_URL=$PUBLIC_API_URL
+ENV PUBLIC_GOOGLE_CLIENT_ID=$PUBLIC_GOOGLE_CLIENT_ID
+ENV PUBLIC_STRIPE_PUBLISHABLE_KEY=$PUBLIC_STRIPE_PUBLISHABLE_KEY
+
+# Copiar dependencias e instalarlas primero (aprovecha el cach 9 de Docker)
 COPY package*.json ./
 RUN npm ci
 
-# Copiar el resto del c3digo y compilar
+# Copiar el resto del c 3digo y compilar
 COPY . .
 
 # En Docker levantaremos SSR con Node adapter (soporta rutas din1micas como /producto/[slug])
