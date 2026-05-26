@@ -222,6 +222,8 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER         = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT          = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    # Excluir el health check del redirect a HTTPS para que los probes de Kubernetes (que usan HTTP plano internamente) reciban 200 y no 301.
+    SECURE_REDIRECT_EXEMPT       = [r'^api/health/$']
     SECURE_HSTS_SECONDS          = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD          = True
