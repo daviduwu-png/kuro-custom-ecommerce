@@ -16,7 +16,6 @@ data:
   DB_NAME: "kurodb"
   DB_USER: "postgres"
   DB_PORT: "5432"
-  SECURE_SSL_REDIRECT: "True"
   DJANGO_SUPERUSER_USERNAME: "kuroadmin"
   DJANGO_SUPERUSER_EMAIL: "admin@kurocustom.uk"
 ---
