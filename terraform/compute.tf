@@ -1,6 +1,6 @@
 resource "aws_instance" "kuro_control_plane" {
   ami           = "ami-04b70fa74e45c3917"
-  instance_type = "t3.medium"
+  instance_type = "c7i-flex.large"
   subnet_id     = aws_subnet.public_a.id  # us-east-1a
 
   key_name = var.ec2_key_name
