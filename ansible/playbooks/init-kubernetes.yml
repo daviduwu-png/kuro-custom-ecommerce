@@ -203,7 +203,7 @@
         kubectl get csr --no-headers 2>/dev/null \
           | grep -c 'Pending' || echo 0
       register: pending_count
-      until: pending_count.stdout | int >= 2
+      until: pending_count.stdout | int >= 1
       retries: 20
       delay: 10
       changed_when: false
