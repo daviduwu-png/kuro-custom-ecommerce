@@ -11,7 +11,7 @@ data:
   CORS_ALLOWED_ORIGINS: "https://kurocustom.uk,https://www.kurocustom.uk"
   CSRF_TRUSTED_ORIGINS: "https://kurocustom.uk,https://www.kurocustom.uk"
   # IMPORTANTE: El valor real de DB_HOST es inyectado por el pipeline de GitHub Actions.
-  # Para desarrollo local, reemplaza DEPLOY_TIME_DB_HOST con el endpoint de tu RDS.
+  # Para desarrollo local, reemplazar DEPLOY_TIME_DB_HOST con el endpoint del RDS.
   DB_HOST: "DEPLOY_TIME_DB_HOST"
   DB_NAME: "kurodb"
   DB_USER: "postgres"
