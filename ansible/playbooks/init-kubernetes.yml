@@ -177,7 +177,7 @@
 
 
 - name: Unir workers al cluster (kubeadm join)
-  hosts: kuro-app-node-01
+  hosts: kuro-app-node-*
   become: true
   tasks:
     - name: Unir nodo worker al cluster

@@ -140,27 +140,27 @@ resource "aws_lb_listener_rule" "backend_rule" {
 }
 
 # Adjuntar Instancias a los Target Groups (NodePorts fijos)
-resource "aws_lb_target_group_attachment" "frontend_control_plane" {
-  target_group_arn = aws_lb_target_group.frontend_tg.arn
-  target_id        = aws_instance.kuro_control_plane.id
-  port             = 30080
-}
-
 resource "aws_lb_target_group_attachment" "frontend_worker" {
   target_group_arn = aws_lb_target_group.frontend_tg.arn
   target_id        = aws_instance.kuro_worker.id
   port             = 30080
 }
 
-resource "aws_lb_target_group_attachment" "backend_control_plane" {
-  target_group_arn = aws_lb_target_group.backend_tg.arn
-  target_id        = aws_instance.kuro_control_plane.id
-  port             = 30800
-}
-
 resource "aws_lb_target_group_attachment" "backend_worker" {
   target_group_arn = aws_lb_target_group.backend_tg.arn
   target_id        = aws_instance.kuro_worker.id
+  port             = 30800
+}
+
+resource "aws_lb_target_group_attachment" "frontend_worker_2" {
+  target_group_arn = aws_lb_target_group.frontend_tg.arn
+  target_id        = aws_instance.kuro_worker_2.id
+  port             = 30080
+}
+
+resource "aws_lb_target_group_attachment" "backend_worker_2" {
+  target_group_arn = aws_lb_target_group.backend_tg.arn
+  target_id        = aws_instance.kuro_worker_2.id
   port             = 30800
 }
 

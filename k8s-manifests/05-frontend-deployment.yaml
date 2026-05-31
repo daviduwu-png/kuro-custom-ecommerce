@@ -4,7 +4,7 @@ metadata:
   name: kuro-frontend
   namespace: kuro
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: kuro-frontend
