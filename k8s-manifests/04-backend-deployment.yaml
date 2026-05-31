@@ -13,6 +13,14 @@ spec:
       labels:
         app: kuro-backend
     spec:
+      # Distribuir equitativamente los pods entre los diferentes worker nodes
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: kuro-backend
       # Nunca ejecutar pods como root
       securityContext:
         runAsNonRoot: true
