@@ -27,10 +27,10 @@ resource "aws_subnet" "public_a" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                  = "kuro-public-subnet-a"
-    Proyecto                              = "Kuro-Custom"
-    "kubernetes.io/cluster/kuro-custom"   = "owned"
-    "kubernetes.io/role/elb"              = "1"
+    Name                                = "kuro-public-subnet-a"
+    Proyecto                            = "Kuro-Custom"
+    "kubernetes.io/cluster/kuro-custom" = "owned"
+    "kubernetes.io/role/elb"            = "1"
   }
 }
 
@@ -43,10 +43,10 @@ resource "aws_subnet" "public_b" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                  = "kuro-public-subnet-b"
-    Proyecto                              = "Kuro-Custom"
-    "kubernetes.io/cluster/kuro-custom"   = "owned"
-    "kubernetes.io/role/elb"              = "1"
+    Name                                = "kuro-public-subnet-b"
+    Proyecto                            = "Kuro-Custom"
+    "kubernetes.io/cluster/kuro-custom" = "owned"
+    "kubernetes.io/role/elb"            = "1"
   }
 }
 

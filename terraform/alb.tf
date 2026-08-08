@@ -219,7 +219,7 @@ resource "aws_s3_bucket_policy" "alb_logs_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "AWSLoadBalancerLogsPolicy"
+        Sid    = "AWSLoadBalancerLogsPolicy"
         Effect = "Allow"
         Principal = {
           AWS = "arn:aws:iam::127311923021:root"

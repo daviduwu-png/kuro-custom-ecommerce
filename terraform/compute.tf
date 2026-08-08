@@ -1,7 +1,7 @@
 resource "aws_instance" "kuro_control_plane" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "c7i-flex.large"
-  subnet_id     = aws_subnet.public_a.id  # us-east-1a
+  subnet_id     = aws_subnet.public_a.id # us-east-1a
 
   key_name = var.ec2_key_name
 
@@ -13,17 +13,17 @@ resource "aws_instance" "kuro_control_plane" {
   }
 
   tags = {
-    Name                                  = "kuro-control-plane-01"
-    Proyecto                              = "Kuro-Custom"
-    Rol                                   = "Control_Plane"
-    "kubernetes.io/cluster/kuro-custom"   = "owned"
+    Name                                = "kuro-control-plane-01"
+    Proyecto                            = "Kuro-Custom"
+    Rol                                 = "Control_Plane"
+    "kubernetes.io/cluster/kuro-custom" = "owned"
   }
 }
 
 resource "aws_instance" "kuro_worker" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "m7i-flex.large"
-  subnet_id     = aws_subnet.public_b.id  # us-east-1b
+  subnet_id     = aws_subnet.public_b.id # us-east-1b
 
   key_name = var.ec2_key_name
 
@@ -35,17 +35,17 @@ resource "aws_instance" "kuro_worker" {
   }
 
   tags = {
-    Name                                  = "kuro-app-node-01"
-    Proyecto                              = "Kuro-Custom"
-    Rol                                   = "Worker_Node"
-    "kubernetes.io/cluster/kuro-custom"   = "owned"
+    Name                                = "kuro-app-node-01"
+    Proyecto                            = "Kuro-Custom"
+    Rol                                 = "Worker_Node"
+    "kubernetes.io/cluster/kuro-custom" = "owned"
   }
 }
 
 resource "aws_instance" "kuro_worker_2" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "m7i-flex.large"
-  subnet_id     = aws_subnet.public_a.id  # us-east-1a — AZ distinta al worker 1 (us-east-1b) para Alta Disponibilidad Multi-AZ
+  subnet_id     = aws_subnet.public_a.id # us-east-1a — AZ distinta al worker 1 (us-east-1b) para Alta Disponibilidad Multi-AZ
 
   key_name = var.ec2_key_name
 
@@ -57,9 +57,9 @@ resource "aws_instance" "kuro_worker_2" {
   }
 
   tags = {
-    Name                                  = "kuro-app-node-02"
-    Proyecto                              = "Kuro-Custom"
-    Rol                                   = "Worker_Node"
-    "kubernetes.io/cluster/kuro-custom"   = "owned"
+    Name                                = "kuro-app-node-02"
+    Proyecto                            = "Kuro-Custom"
+    Rol                                 = "Worker_Node"
+    "kubernetes.io/cluster/kuro-custom" = "owned"
   }
 }
