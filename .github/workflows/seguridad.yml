@@ -1,0 +1,52 @@
+name: Auditoría de Seguridad Automatizada (DevSecOps)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "0 0 * * 0" # Corre semanalmente los domingos
+
+jobs:
+  seguridad-infra:
+    name: Escaneo de Infraestructura (Tfsec)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Escanear Terraform con Tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: ./terraform
+          soft_fail: true # Muestra advertencias pero no rompe el pipeline
+
+  seguridad-imagenes:
+    name: Escaneo de Contenedores (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Build Backend (Local)
+        run: docker build -t kuro-backend:test ./kuro-backend
+
+      - name: Escanear Imagen Backend con Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "kuro-backend:test"
+          format: "table"
+          exit-code: "0"
+          severity: "CRITICAL,HIGH"
+
+      - name: Build Frontend (Local)
+        run: docker build -t kuro-frontend:test ./kuro-frontend --build-arg PUBLIC_API_URL=test --build-arg PUBLIC_GOOGLE_CLIENT_ID=test --build-arg PUBLIC_STRIPE_PUBLISHABLE_KEY=test
+
+      - name: Escanear Imagen Frontend con Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "kuro-frontend:test"
+          format: "table"
+          exit-code: "0"
+          severity: "CRITICAL,HIGH"

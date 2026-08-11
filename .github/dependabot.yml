@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Mantener dependencias de npm actualizadas (Frontend)
+  - package-ecosystem: "npm"
+    directory: "/kuro-frontend"
+    schedule:
+      interval: "weekly"
+
+  # Mantener dependencias de pip actualizadas (Backend)
+  - package-ecosystem: "pip"
+    directory: "/kuro-backend"
+    schedule:
+      interval: "weekly"
+
+  # Mantener dependencias de Terraform actualizadas
+  - package-ecosystem: "terraform"
+    directory: "/terraform"
+    schedule:
+      interval: "weekly"
+
+  # Mantener acciones de GitHub actualizadas
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Mantener imágenes base de Docker actualizadas
+  - package-ecosystem: "docker"
+    directory: "/kuro-backend"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/kuro-frontend"
+    schedule:
+      interval: "weekly"

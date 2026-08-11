@@ -2,14 +2,29 @@
 
 ## Resumen
 
-Este repositorio contiene un e-commerce de referencia para personalización de productos, implementado como un monorepo con un backend en Django (API REST) y un frontend en Astro.
+Este repositorio contiene el código fuente y la infraestructura de **Kuro Custom E-commerce**, un monorepo con backend en Django (API REST) y frontend en Astro, desarrollado como proyecto práctico para un trabajo de tesis.
 
-El objetivo del proyecto es servir como base reproducible para despliegue y operación en entornos locales (Docker Compose) y para infraestructura como código (Terraform), con archivos de automatización (Ansible) y manifiestos de Kubernetes como plantillas.
+### Contexto de la Tesis y Evaluación de Infraestructura
+
+El proyecto se desarrolló principalmente sobre Amazon Web Services (AWS), con una evaluación complementaria sobre Google Cloud Platform (GCP). Tras comparar múltiples distribuciones de Linux de nivel empresarial, se seleccionó Ubuntu Server 24.04 LTS para los nodos de producción, junto con tecnologías de contenedorización mediante Docker y orquestación de clústeres con Kubernetes (empleando containerd como runtime). 
+
+La gestión de configuración siguió la metodología *Twelve-Factor Apps*, inyectando credenciales y parámetros de entorno mediante ConfigMaps y Secrets de Kubernetes sin almacenarlos en el repositorio. El análisis se centró en identificar la combinación más eficiente en términos de latencia, tolerancia a fallos, seguridad perimetral (DevSecOps) y coste operativo, aplicando metodologías FinOps y principios de *Green Cloud Computing* para la optimización continua del gasto y la huella energética.
+
+### Resultados y Validación (Ingeniería del Caos)
+
+La resiliencia del sistema fue validada bajo condiciones de carga extrema (saturación de CPU de hasta 398%) mediante protocolos de Ingeniería del Caos. Algunos de los resultados más destacados incluyen:
+
+- **Rendimiento:** Procesamiento del tráfico con una tasa de error de solo **0.04%** y un tiempo de respuesta promedio de **730 ms**.
+- **Autoescalado (HPA):** Escalado dinámico de los servicios de 2 a 5 réplicas sin tiempo de inactividad.
+- **Alta Disponibilidad:** La arquitectura multi-AZ demostró resiliencia total ante la caída de un nodo, reduciendo el Tiempo Medio de Recuperación (MTTR) de horas a minutos.
+
+Como resultado, se generó un repositorio modular de configuración con auditoría de seguridad automatizada, acompañado de un conjunto de buenas prácticas orientado a desarrolladores y administradores de sistemas.
 
 ## Estructura del repositorio
 
 - `kuro-backend/`: Backend Django (API REST, autenticación, pagos, envíos).
 - `kuro-frontend/`: Frontend Astro (UI, flujo de checkout, consumo de API).
+- `.github/`: Pipelines de CI/CD (GitHub Actions) y herramientas DevSecOps (Dependabot, Trivy, Tfsec).
 - `docker-compose.yml`: Orquestación local (PostgreSQL + backend + frontend).
 - `terraform/`: Infraestructura como código (IaC). Nota: no se versionan `*.tfstate`.
 - `ansible/`: Automatización de configuración (plantillas/playbooks).
@@ -34,6 +49,7 @@ El objetivo del proyecto es servir como base reproducible para despliegue y oper
 - Backend: Python, Django, Django REST Framework, PostgreSQL.
 - Frontend: Astro, React (componentes), Axios.
 - Infra/DevOps: Docker Compose, Terraform, (plantillas) Kubernetes y Ansible.
+- CI/CD y DevSecOps: GitHub Actions, Dependabot, Trivy, Tfsec.
 
 ## Requisitos
 
