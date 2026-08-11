@@ -33,7 +33,7 @@ jobs:
         run: docker build -t kuro-backend:test ./kuro-backend
 
       - name: Escanear Imagen Backend con Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: "kuro-backend:test"
           format: "table"
@@ -44,7 +44,7 @@ jobs:
         run: docker build -t kuro-frontend:test ./kuro-frontend --build-arg PUBLIC_API_URL=test --build-arg PUBLIC_GOOGLE_CLIENT_ID=test --build-arg PUBLIC_STRIPE_PUBLISHABLE_KEY=test
 
       - name: Escanear Imagen Frontend con Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: "kuro-frontend:test"
           format: "table"
