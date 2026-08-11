@@ -17,6 +17,8 @@ El objetivo del proyecto es servir como base reproducible para despliegue y oper
 
 ## Arquitectura (alto nivel)
 
+![Diagrama de Arquitectura Kuro](docs/Diagramas/arquitecturakuro.png)
+
 - **Frontend (Astro)**
   - Renderizado y UI del catálogo, cuenta y checkout.
   - Consumo de API REST del backend.
