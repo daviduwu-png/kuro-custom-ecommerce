@@ -1,4 +1,5 @@
 ---
-- import_playbook: playbooks/hardening.yml
-- import_playbook: playbooks/install-tools.yml
-- import_playbook: playbooks/init-kubernetes.yml
+- import_playbook: playbooks/hardening.yml       # Capa 0: OS hardening + sysctl para K8s
+- import_playbook: playbooks/install-tools.yml   # Capa 1: containerd + kubelet/kubeadm/kubectl
+- import_playbook: playbooks/init-kubernetes.yml # Capa 2: kubeadm init + workers join + HPA
+- import_playbook: playbooks/observability.yml   # Capa 3: Prometheus + Node Exporter + Grafana

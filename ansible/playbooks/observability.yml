@@ -1,0 +1,75 @@
+---
+# Stack de Observabilidad: Prometheus + Node Exporter + Grafana
+#
+# Los manifiestos viven en: k8s-manifests/monitoring/
+# Este playbook los renderiza (sustituyendo versiones de imagen) y los aplica en orden.
+# Se usa 'template' en lugar de 'copy' para que Ansible resuelva las variables
+# {{ prometheus_version }}, {{ node_exporter_version }} y {{ grafana_version }}
+# definidas en ansible/inventory/group_vars/all.yml.
+#
+# Acceso post-despliegue:
+#   Prometheus → http://<worker-ip>:30090
+#   Grafana    → http://<worker-ip>:30300  (admin / kuro-grafana-2024)
+
+- name: Desplegar stack de Observabilidad (Prometheus + Node Exporter + Grafana)
+  hosts: kuro-control-plane-01
+  become: false
+
+  vars:
+    monitoring_src: "{{ playbook_dir }}/../../k8s-manifests/monitoring"
+    monitoring_dest: "/home/{{ kubeconfig_user }}/monitoring"
+    monitoring_manifests:
+      - 00-namespace.yaml
+      - 01-node-exporter.yaml
+      - 02-prometheus-rbac.yaml
+      - 03-prometheus-config.yaml
+      - 04-prometheus-deploy.yaml
+      - 05-grafana.yaml
+
+  tasks:
+
+    - name: Crear directorio de staging en el control plane
+      become_user: "{{ kubeconfig_user }}"
+      file:
+        path: "{{ monitoring_dest }}"
+        state: directory
+        mode: "0755"
+
+    - name: Renderizar manifiestos al control plane (sustituye versiones de imagen)
+      become_user: "{{ kubeconfig_user }}"
+      template:
+        src: "{{ monitoring_src }}/{{ item }}"
+        dest: "{{ monitoring_dest }}/{{ item }}"
+        mode: "0644"
+      loop: "{{ monitoring_manifests }}"
+
+    - name: Aplicar manifiestos de observabilidad (en orden)
+      become_user: "{{ kubeconfig_user }}"
+      command: "kubectl apply -f {{ monitoring_dest }}/{{ item }}"
+      loop: "{{ monitoring_manifests }}"
+      register: monitoring_apply
+      changed_when: "'created' in monitoring_apply.stdout or 'configured' in monitoring_apply.stdout"
+
+    - name: Esperar a que Prometheus esté Ready
+      become_user: "{{ kubeconfig_user }}"
+      command: kubectl rollout status deployment/prometheus -n monitoring --timeout=120s
+      changed_when: false
+      retries: 3
+      delay: 15
+
+    - name: Esperar a que Grafana esté Ready
+      become_user: "{{ kubeconfig_user }}"
+      command: kubectl rollout status deployment/grafana -n monitoring --timeout=120s
+      changed_when: false
+      retries: 3
+      delay: 15
+
+    - name: Verificar pods del stack de observabilidad
+      become_user: "{{ kubeconfig_user }}"
+      command: kubectl get pods -n monitoring -o wide
+      changed_when: false
+      register: monitoring_pods
+
+    - name: Mostrar estado del stack de observabilidad
+      debug:
+        msg: "{{ monitoring_pods.stdout_lines }}"
