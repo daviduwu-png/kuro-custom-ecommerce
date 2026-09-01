@@ -6,7 +6,7 @@ on:
     paths:
       - "kuro-frontend/**"
       - "kuro-backend/**"
-      - "k8s-manifests/**"
+      - "k8s-manifests/*.yaml"
   workflow_dispatch:
 
 jobs:

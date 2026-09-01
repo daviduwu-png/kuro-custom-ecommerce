@@ -15,7 +15,6 @@
 # REGLA: Si cambias kubernetes_version, actualiza también flannel_version
 # y metrics_server_version. Usa SIEMPRE el formato "vX.Y" (sin patch) para el repo APT.
 
-
 # Version del repositorio APT de Kubernetes (formato: "vX.Y")
 # Controla: kubelet, kubeadm, kubectl
 kubernetes_version: "v1.29"
@@ -33,3 +32,13 @@ kubeconfig_user: "ubuntu"
 
 # CIDR para la red de pods (Flannel default)
 pod_network_cidr: "10.244.0.0/16"
+
+# Stack de Observabilidad
+# Referencia Prometheus: https://github.com/prometheus/prometheus/releases
+prometheus_version: "v2.53.0"
+
+# Referencia Node Exporter: https://github.com/prometheus/node_exporter/releases
+node_exporter_version: "v1.8.1"
+
+# Referencia Grafana: https://github.com/grafana/grafana/releases
+grafana_version: "11.1.0"
