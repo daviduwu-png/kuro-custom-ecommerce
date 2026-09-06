@@ -175,7 +175,6 @@
       delay: 10
       until: metrics_apply.rc == 0
 
-
 - name: Unir workers al cluster (kubeadm join)
   hosts: kuro-app-node-*
   become: true
@@ -200,12 +199,25 @@
     - name: Esperar a que todos los nodos generen sus CSRs de serving
       become_user: "{{ kubeconfig_user }}"
       shell: |
-        kubectl get csr --no-headers 2>/dev/null \
-          | grep -c 'Pending' || echo 0
-      register: pending_count
-      until: pending_count.stdout | int >= 1
-      retries: 20
-      delay: 10
+        TOTAL_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo 0)
+        TOP_NODES=$(kubectl top nodes --no-headers 2>/dev/null | wc -l || echo 0)
+        
+        if [ "$TOTAL_NODES" -gt 0 ] && [ "$TOTAL_NODES" -eq "$TOP_NODES" ]; then
+          echo "Todos los nodos ya tienen métricas. No se esperan nuevos CSRs."
+          exit 0
+        fi
+        
+        for i in {1..15}; do
+          PENDING=$(kubectl get csr --no-headers 2>/dev/null | grep -c 'Pending' || echo 0)
+          if [ "$PENDING" -ge 1 ]; then
+            echo "Se encontraron $PENDING CSRs pendientes."
+            exit 0
+          fi
+          sleep 10
+        done
+        echo "No se encontraron CSRs pendientes después de esperar."
+        exit 0
+      register: wait_csrs
       changed_when: false
 
     - name: Aprobar todos los CSRs de kubelet-serving pendientes
