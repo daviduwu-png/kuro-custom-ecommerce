@@ -66,10 +66,5 @@
 
     - name: Verificar pods del stack de observabilidad
       become_user: "{{ kubeconfig_user }}"
-      command: kubectl get pods -n monitoring -o wide
+      command: kubectl get pods -n monitoring
       changed_when: false
-      register: monitoring_pods
-
-    - name: Mostrar estado del stack de observabilidad
-      debug:
-        msg: "{{ monitoring_pods.stdout_lines }}"
