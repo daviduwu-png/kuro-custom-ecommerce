@@ -80,6 +80,12 @@ El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observab
 
 Para garantizar la seguridad perimetral del panel de administración, **Grafana se encuentra detrás del Application Load Balancer (ALB)**, expuesto mediante un subdominio exclusivo (`grafana.kurocustom.uk`) con cifrado TLS/HTTPS. Adicionalmente, se previno la fuga de información (Information Disclosure) eliminando las contraseñas en texto plano de los manifiestos; ahora se inyectan dinámicamente mediante **Kubernetes Secrets** alimentados por GitHub Actions.
 
+**Auto-Provisioning de Dashboards ("Infraestructura Inmutable")**
+Con el objetivo de mantener un entorno verdaderamente reproducible (sin intervención manual de configuración post-despliegue), se implementó un mecanismo de *Provisioning* automático en Grafana mediante un **Init Container** y **ConfigMaps**. Al inicializarse, el pod de Grafana descarga dinámicamente desde la API oficial los dashboards necesarios para medir las pruebas de Ingeniería del Caos (JMeter):
+- **Node Exporter (ID 1860):** Para el monitoreo de saturación física en los nodos EC2.
+- **cAdvisor (ID 14282):** Para la medición granular de consumo (CPU/RAM) a nivel de pod/contenedor, consumido directamente desde el Kubelet.
+*Prometheus queda configurado automáticamente como Data Source por defecto en el arranque.*
+
 | Componente | Tipo K8s | Puerto NodePort | Función |
 |---|---|---|---|
 | Node Exporter | DaemonSet | — | Métricas del host: CPU, RAM, disco, red |
