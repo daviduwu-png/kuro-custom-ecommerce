@@ -24,8 +24,8 @@
       - 02-prometheus-rbac.yaml
       - 03-prometheus-config.yaml
       - 04-prometheus-deploy.yaml
-      - 06-grafana-secret.yaml
-      - 05-grafana.yaml
+      - 05-grafana-secret.yaml
+      - 06-grafana.yaml
 
   tasks:
 

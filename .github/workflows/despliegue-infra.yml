@@ -107,7 +107,7 @@ jobs:
       - name: Inyectar secrets de Grafana
         if: github.event.inputs.action == 'apply'
         run: |
-          sed -i "s|DEPLOY_TIME_GRAFANA_PASSWORD|${{ secrets.GRAFANA_ADMIN_PASSWORD }}|g" k8s-manifests/monitoring/06-grafana-secret.yaml
+          sed -i "s|DEPLOY_TIME_GRAFANA_PASSWORD|${{ secrets.GRAFANA_ADMIN_PASSWORD }}|g" k8s-manifests/monitoring/05-grafana-secret.yaml
 
       - name: Ejecutar Ansible Playbooks (Capa 2)
         if: github.event.inputs.action == 'apply'
