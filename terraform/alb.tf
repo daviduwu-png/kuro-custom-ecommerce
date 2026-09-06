@@ -92,6 +92,24 @@ resource "aws_lb_target_group" "backend_tg" {
   }
 }
 
+# Target Group para Grafana (NodePort fijo 30300)
+resource "aws_lb_target_group" "grafana_tg" {
+  name     = "kuro-grafana-tg"
+  port     = 30300
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.kuro_vpc.id
+
+  health_check {
+    path                = "/api/health"
+    port                = "30300"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200-399"
+  }
+}
+
 # Listener del ALB (Puerto 80) -> Redirige a 443
 resource "aws_lb_listener" "http_listener" {
   load_balancer_arn = aws_lb.kuro_alb.arn
@@ -139,6 +157,23 @@ resource "aws_lb_listener_rule" "backend_rule" {
   }
 }
 
+# Reglas del Listener para rutear grafana.kurocustom.uk al Target Group de Grafana
+resource "aws_lb_listener_rule" "grafana_rule" {
+  listener_arn = aws_lb_listener.https_listener.arn
+  priority     = 50
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.grafana_tg.arn
+  }
+
+  condition {
+    host_header {
+      values = ["grafana.kurocustom.uk"]
+    }
+  }
+}
+
 # Adjuntar Instancias a los Target Groups (NodePorts fijos)
 resource "aws_lb_target_group_attachment" "frontend_worker" {
   target_group_arn = aws_lb_target_group.frontend_tg.arn
@@ -162,6 +197,18 @@ resource "aws_lb_target_group_attachment" "backend_worker_2" {
   target_group_arn = aws_lb_target_group.backend_tg.arn
   target_id        = aws_instance.kuro_worker_2.id
   port             = 30800
+}
+
+resource "aws_lb_target_group_attachment" "grafana_worker" {
+  target_group_arn = aws_lb_target_group.grafana_tg.arn
+  target_id        = aws_instance.kuro_worker.id
+  port             = 30300
+}
+
+resource "aws_lb_target_group_attachment" "grafana_worker_2" {
+  target_group_arn = aws_lb_target_group.grafana_tg.arn
+  target_id        = aws_instance.kuro_worker_2.id
+  port             = 30300
 }
 
 

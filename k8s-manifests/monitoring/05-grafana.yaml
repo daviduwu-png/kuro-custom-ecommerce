@@ -29,9 +29,14 @@ spec:
             - name: GF_SECURITY_ADMIN_USER
               value: "admin"
             - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "kuro-grafana-2024"
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-auth
+                  key: admin-password
             - name: GF_ANALYTICS_REPORTING_ENABLED
               value: "false"
+            - name: GF_SERVER_DOMAIN
+              value: "grafana.kurocustom.uk"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

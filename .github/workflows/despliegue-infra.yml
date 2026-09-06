@@ -59,6 +59,8 @@ jobs:
           TF_VAR_ec2_key_name: "kuro-custom-key"
           TF_VAR_allowed_ssh_cidr: ${{ secrets.ALLOWED_SSH_CIDR }}
           TF_VAR_alb_allowed_cidrs: ${{ secrets.ALB_ALLOWED_CIDRS || '["0.0.0.0/0"]' }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
 
       # Los runners de GitHub Actions tienen IPs dinámicas que cambian cada
       # ejecución. La solución de mejores prácticas es:
@@ -102,6 +104,10 @@ jobs:
           # Exportar variables para que los siguientes pasos las usen
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
           echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+      - name: Inyectar secrets de Grafana
+        if: github.event.inputs.action == 'apply'
+        run: |
+          sed -i "s|DEPLOY_TIME_GRAFANA_PASSWORD|${{ secrets.GRAFANA_ADMIN_PASSWORD }}|g" k8s-manifests/monitoring/06-grafana-secret.yaml
 
       - name: Ejecutar Ansible Playbooks (Capa 2)
         if: github.event.inputs.action == 'apply'

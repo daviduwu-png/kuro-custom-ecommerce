@@ -74,17 +74,27 @@ Este es el componente de elasticidad más significativo del proyecto. Opera de f
 
 El pipeline de despliegue (`despliegue-app.yml`) resuelve la IP del control plane **dinámicamente por tags EC2** (no está hardcodeada) y abre el puerto SSH en el Security Group únicamente durante la ejecución del job, cerrándolo con `if: always()` incluso si el pipeline falla. Los secrets se inyectan en los manifiestos de K8s via `sed` en tiempo de ejecución — nunca se almacenan en el repositorio.
 
-### 7. Stack de Observabilidad automatizado (Prometheus + Node Exporter + Grafana)
+### 7. Stack de Observabilidad automatizado y seguro (Prometheus + Grafana)
 
-El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observability.yml`), que renderiza y aplica los manifiestos de K8s ubicados en `k8s-manifests/monitoring/`. Se usa el módulo `template` de Ansible para sustituir las versiones de imagen (definidas en `group_vars/all.yml`) antes de aplicarlos al cluster. Se eligió este enfoque (K8s nativo) sobre soluciones como Helm o el operador Prometheus para mantener la consistencia con el resto de los manifiestos del proyecto y minimizar dependencias externas.
+El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observability.yml`), que renderiza y aplica los manifiestos de K8s ubicados en `k8s-manifests/monitoring/`. Se usa el módulo `template` de Ansible para sustituir las versiones de imagen (definidas en `group_vars/all.yml`) antes de aplicarlos al cluster. 
+
+Para garantizar la seguridad perimetral del panel de administración, **Grafana se encuentra detrás del Application Load Balancer (ALB)**, expuesto mediante un subdominio exclusivo (`grafana.kurocustom.uk`) con cifrado TLS/HTTPS. Adicionalmente, se previno la fuga de información (Information Disclosure) eliminando las contraseñas en texto plano de los manifiestos; ahora se inyectan dinámicamente mediante **Kubernetes Secrets** alimentados por GitHub Actions.
 
 | Componente | Tipo K8s | Puerto NodePort | Función |
 |---|---|---|---|
 | Node Exporter | DaemonSet | — | Métricas del host: CPU, RAM, disco, red |
 | Prometheus | Deployment | 30090 | Scraping y almacenamiento de series de tiempo |
-| Grafana | Deployment | 30300 | Visualización de dashboards |
+| Grafana | Deployment | 30300 | Visualización de dashboards (Expuesto de forma segura vía ALB) |
 
 > **Limitación conocida:** Los datos de Prometheus y Grafana se almacenan en `emptyDir` (volumen efímero). Si el pod se reinicia, el historial se pierde. En producción se requeriría un `PersistentVolume` (ej.: EBS). Para el entorno de investigación es suficiente ya que las capturas se tomaban durante las sesiones de prueba.
+
+### 8. Gestión de DNS Automatizada (Terraform + Cloudflare)
+
+Para resolver el reto del cambio dinámico de URLs e IPs al destruir y recrear la infraestructura en AWS, el proyecto integra el **proveedor de Cloudflare en Terraform** (`cloudflare.tf`). 
+
+Durante el pipeline de despliegue (`despliegue-infra.yml`), Terraform se comunica automáticamente con la API de Cloudflare para:
+1. Crear los registros DNS de validación de ACM, permitiendo a AWS emitir los certificados SSL sin intervención manual.
+2. Actualizar los registros CNAME del dominio principal (`www` y `@`) y del stack de observabilidad (`grafana`) para que apunten al nuevo ALB recién aprovisionado.
 
 ---
 

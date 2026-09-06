@@ -64,3 +64,17 @@ variable "alb_logs_bucket_name" {
   type        = string
   default     = ""
 }
+
+# Cloudflare DNS Automático
+
+variable "cloudflare_api_token" {
+  description = "Token de API de Cloudflare con permisos de edición de DNS"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "ID de la zona (dominio) en Cloudflare"
+  type        = string
+  sensitive   = true
+}

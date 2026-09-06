@@ -11,6 +11,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 
   # Backend remoto en S3 — permite que GitHub Actions y maquina local compartan el mismo estado.
@@ -25,4 +29,8 @@ terraform {
 
 provider "aws" {
   region = "us-east-1"
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
