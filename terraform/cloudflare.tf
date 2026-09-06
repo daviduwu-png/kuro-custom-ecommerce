@@ -8,40 +8,44 @@ resource "cloudflare_record" "acm_validation" {
     }
   }
 
-  zone_id = var.cloudflare_zone_id
-  name    = each.value.name
-  value   = each.value.record
-  type    = each.value.type
-  proxied = false
-  ttl     = 120
+  zone_id         = var.cloudflare_zone_id
+  name            = each.value.name
+  content         = each.value.record
+  type            = each.value.type
+  proxied         = false
+  ttl             = 120
+  allow_overwrite = true
 }
 
 # CNAME para el dominio principal (App Frontend/Backend)
 resource "cloudflare_record" "www" {
-  zone_id = var.cloudflare_zone_id
-  name    = "www"
-  value   = aws_lb.kuro_alb.dns_name
-  type    = "CNAME"
-  proxied = false
-  ttl     = 120
+  zone_id         = var.cloudflare_zone_id
+  name            = "www"
+  content         = aws_lb.kuro_alb.dns_name
+  type            = "CNAME"
+  proxied         = false
+  ttl             = 120
+  allow_overwrite = true
 }
 
 # CNAME para la raíz del dominio (@) usando CNAME flattening en Cloudflare
 resource "cloudflare_record" "root" {
-  zone_id = var.cloudflare_zone_id
-  name    = "@"
-  value   = aws_lb.kuro_alb.dns_name
-  type    = "CNAME"
-  proxied = false
-  ttl     = 120
+  zone_id         = var.cloudflare_zone_id
+  name            = "@"
+  content         = aws_lb.kuro_alb.dns_name
+  type            = "CNAME"
+  proxied         = false
+  ttl             = 120
+  allow_overwrite = true
 }
 
 # CNAME para Grafana
 resource "cloudflare_record" "grafana" {
-  zone_id = var.cloudflare_zone_id
-  name    = "grafana"
-  value   = aws_lb.kuro_alb.dns_name
-  type    = "CNAME"
-  proxied = false
-  ttl     = 120
+  zone_id         = var.cloudflare_zone_id
+  name            = "grafana"
+  content         = aws_lb.kuro_alb.dns_name
+  type            = "CNAME"
+  proxied         = false
+  ttl             = 120
+  allow_overwrite = true
 }
