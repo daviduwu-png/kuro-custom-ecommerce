@@ -2,7 +2,7 @@
 - name: Inicializar control plane (kubeadm init)
   hosts: kuro-control-plane-01
   become: true
-  # NOTA: Las variables pod_network_cidr, flannel_version y kubeconfig_user
+  # NOTA: Las variables pod_network_cidr, calico_version y kubeconfig_user
   # se definen en ansible/inventory/group_vars/all.yml
   tasks:
     - name: Crear archivo de configuracion de kubeadm con TLS bootstrap
@@ -143,14 +143,29 @@
       delay: 10
       until: apiserver_health.rc == 0
 
-    - name: Instalar CNI (Flannel)
+    - name: Instalar CNI (Calico)
       become_user: "{{ kubeconfig_user }}"
-      command: "kubectl apply --validate=false -f https://raw.githubusercontent.com/flannel-io/flannel/{{ flannel_version }}/Documentation/kube-flannel.yml"
-      register: flannel_apply
-      changed_when: "'created' in flannel_apply.stdout or 'configured' in flannel_apply.stdout"
+      # Calico se instala desde su manifest oficial. El CIDR de pods se configura
+      # mediante la variable de entorno CALICO_IPV4POOL_CIDR en el DaemonSet.
+      # Calico provee Network Policies nativas (API de Kubernetes), a diferencia
+      # de Flannel que solo ofrece conectividad L3 sin capacidad de segmentación.
+      command: "kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+      register: calico_apply
+      changed_when: "'created' in calico_apply.stdout or 'configured' in calico_apply.stdout"
       retries: 12
       delay: 10
-      until: flannel_apply.rc == 0
+      until: calico_apply.rc == 0
+
+    - name: Esperar a que los pods de Calico estén Running (requerido antes de unir workers)
+      become_user: "{{ kubeconfig_user }}"
+      shell: |
+        kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers \
+          | grep -v Running | wc -l
+      register: calico_not_ready
+      retries: 20
+      delay: 15
+      until: calico_not_ready.stdout | trim == "0"
+      changed_when: false
 
     - name: Obtener comando de join para workers
       command: kubeadm token create --print-join-command

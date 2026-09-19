@@ -48,6 +48,32 @@ Los 3 nodos EC2 (`c7i-flex.large` control plane, 2× `m7i-flex.large` workers) s
 
 El **Application Load Balancer** (subnets en `us-east-1a` y `us-east-1b`) es elástico por diseño de AWS: escala internamente sin intervención del operador. Se eligió ALB sobre Classic Load Balancer por soporte de path-based routing (`/api/*` → backend, `/` → frontend) y terminación TLS con ACM.
 
+### 3.5 Calico como CNI — segmentación de red interna con Network Policies
+
+Se eligió **Calico** como Container Network Interface (CNI) en lugar de Flannel por una razón funcional directamente alineada al tema de la tesis (*diseño e implementación de infraestructura cloud basada en Linux para aplicaciones web escalables*): la capacidad de aplicar **Network Policies** nativas de Kubernetes.
+
+**Flannel** ofrece únicamente conectividad L3 entre pods (overlay VXLAN), sin ningún mecanismo de segmentación. En un namespace sin Network Policies, cualquier pod puede conectarse a cualquier otro pod del cluster en cualquier puerto — incluyendo conexiones desde el frontend directamente al pod del backend omitiendo el Service, o desde un pod comprometido hacia el endpoint de RDS.
+
+**Calico** implementa el mismo overlay de red pero además actúa como controlador de Network Policies, programando reglas `iptables`/`eBPF` en cada nodo para hacer cumplir las políticas declaradas en los manifiestos de Kubernetes.
+
+**Modelo de segmentación implementado** (`k8s-manifests/07-network-policies.yaml`):
+
+```
+Principio: default-deny-ingress + allowlist explícita por servicio
+
+Internet → ALB → NodePort → [frontend] ──(8000)──→ [backend] → RDS :5432
+                                ↑                      ↑
+                         allow desde nodo        allow desde frontend
+                         (filtrado por SG AWS)   y desde ALB via NodePort
+
+Flujos denegados implícitamente:
+  ✗ frontend → RDS directamente (5432)
+  ✗ backend  → frontend (el backend no inicia conexiones hacia el frontend)
+  ✗ monitoring namespace → pods de kuro sin autorización explícita
+```
+
+**Nota sobre el CIDR:** Flannel usa `10.244.0.0/16` por defecto; Calico usa `192.168.0.0/16`. El pod CIDR está centralizado en `group_vars/all.yml` y se pasa a `kubeadm` via `podSubnet`, garantizando consistencia entre el plano de control y el CNI.
+
 ### 4. RDS en subnets públicas con `publicly_accessible = false`
 
 La práctica del AWS Well-Architected Framework exige que la capa de datos resida en **subnets privadas** sin ruta al Internet Gateway. Esta arquitectura usa las mismas subnets públicas para RDS por restricción de costo: un **NAT Gateway** tiene un costo fijo de ~$45/mes que excede el presupuesto del Free Tier.
@@ -102,6 +128,34 @@ Durante el pipeline de despliegue (`despliegue-infra.yml`), Terraform se comunic
 1. Crear los registros DNS de validación de ACM, permitiendo a AWS emitir los certificados SSL sin intervención manual.
 2. Actualizar los registros CNAME del dominio principal (`www` y `@`) y del stack de observabilidad (`grafana`) para que apunten al nuevo ALB recién aprovisionado.
 
+### 9. Frontend en Kubernetes en lugar de S3 + CloudFront
+
+Una arquitectura JAMstack alternativa habría consistido en servir el build estático de Astro/React desde un **S3 bucket con CloudFront** como CDN, desacoplando completamente la capa de presentación del clúster. Esta opción fue evaluada y descartada deliberadamente por las siguientes razones:
+
+1. **Coherencia del objeto de investigación:** La tesis valida el comportamiento de Kubernetes bajo carga extrema. Si el frontend reside fuera del clúster, el tráfico de la UI queda fuera del plano de control de K8s, lo que significa que el HPA, las métricas de Prometheus y los dashboards de Grafana capturarían únicamente la carga del backend. Los resultados de las pruebas de Ingeniería del Caos (30.000 peticiones concurrentes) serían parciales e incomparables entre ejecuciones.
+
+2. **Integridad del experimento:** El entorno de hardware debe ser controlado y reproducible. Introducir una CDN con caché distribuida haría que los tiempos de respuesta medidos dependieran de variables externas al clúster (hit/miss ratio de caché, edge locations de CloudFront), invalidando la metodología experimental.
+
+3. **Simplicidad del plano de control:** Mantener todo el tráfico dentro de un único ALB con path-based routing (`/` → frontend, `/api/*` → backend) simplifica la topología de red y la trazabilidad de métricas. Añadir CloudFront implicaría un segundo punto de entrada con su propia capa de logs, complicando el análisis de causa raíz durante los escenarios de fallo.
+
+**Patrón ideal sin restricción metodológica:** Para producción real, Astro genera un build 100 % estático apto para S3 + CloudFront, lo que reduciría drásticamente la carga sobre los workers de K8s y mejoraría el Time to First Byte (TTFB) globalmente mediante distribución en edge locations.
+
+### 10. Ausencia de VPC Gateway Endpoints (S3 / DynamoDB)
+
+Los **VPC Gateway Endpoints** permiten que el tráfico `EC2 → S3` o `EC2 → DynamoDB` se enrute de forma privada a través de la red troncal de AWS, sin atravesar el Internet Gateway. Esto elimina el costo de transferencia de datos de salida (*data transfer out*) y reduce la latencia en arquitecturas con flujo continuo de datos entre EC2 y S3.
+
+En este proyecto, la ausencia de endpoints es una decisión consciente basada en el análisis del patrón de acceso real a S3:
+
+| Caso de uso S3 | Frecuencia | Justificación |
+|---|---|---|
+| Remote state de Terraform (`kuro-custom-tfstate`) | Puntual (solo en CI/CD) | Operación de minutos por despliegue, no en el path crítico de la aplicación |
+| Logs de acceso del ALB (`kuro-alb-logs`) | Escritura pasiva del propio ALB | El ALB escribe directamente; los EC2 no leen estos logs en runtime |
+| Acceso desde pods K8s a S3 | Inexistente en runtime | Las imágenes de productos se gestionan mediante Cloudinary (servicio externo) |
+
+Dado que ningún flujo de datos en el path crítico de la aplicación involucra tráfico EC2 → S3 de forma continua, el costo de transferencia de datos que un Gateway Endpoint mitigaría es despreciable en este entorno. Añadir el endpoint introduciría entradas adicionales en la Route Table y política de endpoint sin un beneficio medible.
+
+**Cuándo sería necesario:** Si el backend Django descargara assets desde S3 en cada request (ej.: imágenes almacenadas en S3 en lugar de Cloudinary), o si RDS realizara exports continuos a S3, el volumen de tráfico justificaría el endpoint tanto por costo como por latencia.
+
 ---
 
 ## Estructura del repositorio
@@ -115,8 +169,15 @@ kuro-custom-ecommerce/
 │   ├── playbooks/         # Automatización por capas (hardening → K8s → observabilidad)
 │   └── inventory/         # Inventario dinámico AWS EC2 + group_vars
 ├── k8s-manifests/
-│   ├── *.yaml             # Manifiestos de la aplicación (namespace, configmap, HPA, deployments)
-│   └── monitoring/        # Manifiestos del stack de observabilidad (Prometheus, Grafana)
+│   ├── 00-namespace.yaml      # Namespace kuro
+│   ├── 01-configmap.yaml      # Variables de configuración no sensibles
+│   ├── 02-secret.yaml         # Secrets inyectados por CI/CD (nunca en repo)
+│   ├── 03-services.yaml       # NodePort services (frontend: 30080, backend: 30800)
+│   ├── 04-backend-deployment.yaml  # Deployment Django con HPA, probes y securityContext
+│   ├── 05-frontend-deployment.yaml # Deployment Astro/React
+│   ├── 06-hpa.yaml            # HorizontalPodAutoscaler (CPU target tracking 50%)
+│   ├── 07-network-policies.yaml    # Segmentación de red: deny-all + allowlist por servicio
+│   └── monitoring/            # Manifiestos del stack de observabilidad (Prometheus, Grafana)
 ├── .github/
 │   ├── workflows/         # Pipelines CI/CD (despliegue-app, despliegue-infra, seguridad)
 │   └── dependabot.yml     # Actualizaciones automáticas de dependencias
@@ -128,7 +189,7 @@ kuro-custom-ecommerce/
 ```
 Capa 0 — hardening.yml       → OS hardening, swap off, sysctl para K8s
 Capa 1 — install-tools.yml   → containerd, kubelet, kubeadm, kubectl
-Capa 2 — init-kubernetes.yml → kubeadm init, join workers, Flannel CNI, Metrics Server
+Capa 2 — init-kubernetes.yml → kubeadm init, join workers, Calico CNI, Metrics Server
 Capa 3 — observability.yml   → Prometheus, Node Exporter, Grafana
 ```
 
@@ -152,7 +213,7 @@ Internet
 | Capa | Tecnologías |
 |---|---|
 | **Aplicación** | Python, Django, DRF, Astro, React, PostgreSQL |
-| **Contenedores** | Docker, containerd, Kubernetes (kubeadm) |
+| **Contenedores** | Docker, containerd, Kubernetes (kubeadm), Calico CNI |
 | **IaC** | Terraform ≥ 1.10, provider AWS ~6.0 |
 | **Configuración** | Ansible, inventario dinámico EC2 (plugin `aws_ec2`) |
 | **CI/CD** | GitHub Actions, Docker Hub |

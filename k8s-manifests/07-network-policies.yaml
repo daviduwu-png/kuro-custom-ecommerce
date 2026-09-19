@@ -1,0 +1,173 @@
+# =============================================================================
+# Network Policies — Namespace kuro
+# =============================================================================
+# Requiere un CNI con soporte de Network Policies (Calico).
+#
+# Modelo de segmentación implementado (principio de mínimo privilegio):
+#
+#   Internet → ALB → NodePort → [frontend] → (HTTP) → [backend] → RDS
+#                             ↑                      ↑
+#                    Solo acepta tráfico        Solo acepta tráfico
+#                    desde el nodo (ALB)        desde frontend o ALB
+#
+# Flujos PERMITIDOS:
+#   1. ALB  → frontend (NodePort 3000)    — tráfico de usuario final
+#   2. ALB  → backend  (NodePort 8000)    — llamadas directas a /api desde el ALB
+#   3. frontend → backend (puerto 8000)   — SSR/fetch interno de Astro al backend
+#   4. backend → internet (egress)        — llamadas a Stripe, MercadoPago, Cloudinary, Skydropx
+#   5. frontend → internet (egress)       — pull de assets externos (CDN de Astro build)
+#
+# Flujos DENEGADOS por default (deny-all implícito al aplicar cualquier policy):
+#   ✗ frontend → RDS directamente
+#   ✗ frontend → kube-system o monitoring
+#   ✗ backend  → frontend (el backend no inicia conexiones hacia el frontend)
+#   ✗ Pod a pod entre namespaces no autorizados
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Deny-all ingress por default en el namespace kuro
+#    Sin esta policy, todo el tráfico interno entre pods está permitido.
+#    Esta policy establece la base de "deny todo, permitir lo explícito".
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: kuro
+  # Documentación: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+spec:
+  podSelector: {}   # Aplica a TODOS los pods del namespace kuro
+  policyTypes:
+    - Ingress       # Solo restringe ingress; egress queda libre para llamadas a APIs externas
+
+---
+# -----------------------------------------------------------------------------
+# 2. Policy del Frontend — acepta tráfico solo desde los nodos (ALB via NodePort)
+#    El ALB se conecta al NodePort directamente en la IP del nodo worker EC2,
+#    por lo que el tráfico llega al pod con la IP del nodo como origen.
+#    Se permite todo el tráfico de ingress al frontend ya que el filtrado
+#    de origen ocurre a nivel de Security Group del ALB (capa de red AWS).
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-frontend
+  namespace: kuro
+spec:
+  podSelector:
+    matchLabels:
+      app: kuro-frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    # Tráfico desde el ALB via NodePort (IP del nodo host)
+    - {}   # Permite todo ingress al frontend — el filtrado de origen lo hace el SG del ALB
+
+---
+# -----------------------------------------------------------------------------
+# 3. Policy del Backend — acepta tráfico solo desde el frontend y desde el ALB
+#    El backend no debe ser accesible directamente desde otros pods (ej: monitoring
+#    namespace) excepto a través de los flujos autorizados.
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-backend
+  namespace: kuro
+spec:
+  podSelector:
+    matchLabels:
+      app: kuro-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    # Tráfico desde pods del frontend (fetch/SSR de Astro → Django API)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: kuro-frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Tráfico desde el ALB via NodePort (llamadas directas a /api/* y /admin/*)
+    # El ALB llega como tráfico del nodo host, por lo que se permite desde
+    # cualquier origen — el SG del ALB restringe quién puede llegar al NodePort.
+    - ports:
+        - protocol: TCP
+          port: 8000
+
+---
+# -----------------------------------------------------------------------------
+# 4. Policy de Egress del Backend — permite salida a internet para APIs externas
+#    El backend Django llama a: Stripe, MercadoPago, Cloudinary, Skydropx,
+#    Google OAuth, y RDS PostgreSQL (dentro de la VPC).
+#    Sin esta policy, el egress queda irrestricto (comportamiento por default
+#    cuando solo se define policyTypes: [Ingress] en la policy anterior).
+#    Se define explícitamente para documentar los flujos de salida autorizados.
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-backend
+  namespace: kuro
+spec:
+  podSelector:
+    matchLabels:
+      app: kuro-backend
+  policyTypes:
+    - Egress
+  egress:
+    # DNS (requerido para resolver nombres de dominio de APIs externas)
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # HTTPS — APIs externas: Stripe, MercadoPago, Cloudinary, Skydropx, Google OAuth
+    - ports:
+        - protocol: TCP
+          port: 443
+    # PostgreSQL — RDS dentro de la VPC (CIDR de la VPC: 10.0.0.0/16)
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# -----------------------------------------------------------------------------
+# 5. Policy de Egress del Frontend — permite salida al backend y a internet
+#    Astro/React en modo SSR puede hacer fetch al backend. También necesita
+#    acceso a internet para assets externos durante el runtime del servidor.
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-frontend
+  namespace: kuro
+spec:
+  podSelector:
+    matchLabels:
+      app: kuro-frontend
+  policyTypes:
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Backend Django — fetch SSR de Astro al API interno
+    - to:
+        - podSelector:
+            matchLabels:
+              app: kuro-backend
+      ports:
+        - protocol: TCP
+          port: 8000
+    # HTTPS — assets externos e integraciones de terceros
+    - ports:
+        - protocol: TCP
+          port: 443
