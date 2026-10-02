@@ -42,11 +42,12 @@ spec:
 
 ---
 # -----------------------------------------------------------------------------
-# 2. Policy del Frontend — acepta tráfico solo desde los nodos (ALB via NodePort)
+# 2. Policy del Frontend — acepta tráfico solo desde la VPC (ALB via NodePort)
 #    El ALB se conecta al NodePort directamente en la IP del nodo worker EC2,
 #    por lo que el tráfico llega al pod con la IP del nodo como origen.
-#    Se permite todo el tráfico de ingress al frontend ya que el filtrado
-#    de origen ocurre a nivel de Security Group del ALB (capa de red AWS).
+#    Se permite tráfico entrante desde el CIDR de la VPC (10.0.0.0/16) en el
+#    puerto del contenedor (3000), dado que todos los nodos workers tienen IPs
+#    dentro de ese rango. El filtrado de origen ALB ocurre en capa SG de AWS.
 # -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -60,8 +61,14 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Tráfico desde el ALB via NodePort (IP del nodo host)
-    - {}   # Permite todo ingress al frontend — el filtrado de origen lo hace el SG del ALB
+    # Tráfico desde la VPC en puerto 3000 (ALB via NodePort + nodos del cluster)
+    # ipBlock restringe el origen a IPs internas de la VPC únicamente.
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 3000
 
 ---
 # -----------------------------------------------------------------------------

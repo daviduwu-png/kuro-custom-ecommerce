@@ -89,21 +89,36 @@ jobs:
         if: github.event.inputs.action == 'apply'
         run: |
           RUNNER_IP="$(curl -s https://checkip.amazonaws.com)/32"
-          SG_ID=$(aws ec2 describe-security-groups \
+
+          # Obtener ambos SGs
+          SG_ID_WORKERS=$(aws ec2 describe-security-groups \
             --filters "Name=group-name,Values=sg_kuro_custom" \
             --query "SecurityGroups[0].GroupId" \
             --output text)
 
+          SG_ID_CP=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=sg_kuro_control_plane" \
+            --query "SecurityGroups[0].GroupId" \
+            --output text)
+
           echo "Runner IP: $RUNNER_IP"
-          echo "Security Group: $SG_ID"
+          echo "SG Workers: $SG_ID_WORKERS"
+          echo "SG Control Plane: $SG_ID_CP"
+
+          IP_PERMISSION="IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP,Description='Temporal: GitHub Actions runner - auto-eliminado al final del job'}]"
 
           aws ec2 authorize-security-group-ingress \
-            --group-id "$SG_ID" \
-            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP,Description='Temporal: GitHub Actions runner - auto-eliminado al final del job'}]"
+            --group-id "$SG_ID_WORKERS" \
+            --ip-permissions "$IP_PERMISSION"
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID_CP" \
+            --ip-permissions "$IP_PERMISSION"
 
           # Exportar variables para que los siguientes pasos las usen
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
-          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+          echo "SG_ID_WORKERS=$SG_ID_WORKERS" >> $GITHUB_ENV
+          echo "SG_ID_CP=$SG_ID_CP" >> $GITHUB_ENV
       - name: Inyectar secrets de Grafana
         if: github.event.inputs.action == 'apply'
         run: |
@@ -123,12 +138,18 @@ jobs:
       - name: Cerrar SSH temporal del runner
         if: always() && github.event.inputs.action == 'apply' && steps.ssh-open.outcome == 'success'
         run: |
-          aws ec2 revoke-security-group-ingress \
-            --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 22 \
-            --cidr "$RUNNER_IP" \
-          || echo "La regla ya no existe"
+          # Revocar en ambos SGs (workers + control plane)
+          for SG in "$SG_ID_WORKERS" "$SG_ID_CP"; do
+            if [ -n "$SG" ] && [ "$SG" != "None" ]; then
+              aws ec2 revoke-security-group-ingress \
+                --group-id "$SG" \
+                --protocol tcp \
+                --port 22 \
+                --cidr "$RUNNER_IP" \
+              || echo "La regla en $SG ya no existe o fue revocada"
+            fi
+          done
         env:
-          SG_ID: ${{ env.SG_ID }}
+          SG_ID_WORKERS: ${{ env.SG_ID_WORKERS }}
+          SG_ID_CP: ${{ env.SG_ID_CP }}
           RUNNER_IP: ${{ env.RUNNER_IP }}

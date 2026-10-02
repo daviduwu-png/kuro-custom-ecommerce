@@ -5,7 +5,8 @@ resource "aws_instance" "kuro_control_plane" {
 
   key_name = var.ec2_key_name
 
-  vpc_security_group_ids = [aws_security_group.seguridad_kuro.id]
+  # SG dedicado al Control Plane: sin regla de NodePort desde el ALB.
+  vpc_security_group_ids = [aws_security_group.control_plane_sg.id]
 
   root_block_device {
     volume_size = 20

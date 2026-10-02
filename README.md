@@ -8,18 +8,18 @@ Este repositorio contiene el código fuente y la infraestructura de **Kuro Custo
 
 El proyecto se desarrolló principalmente sobre **Amazon Web Services (AWS)**, con una evaluación complementaria sobre **Google Cloud Platform (GCP)**. Tras comparar múltiples distribuciones Linux de nivel empresarial se seleccionó **Ubuntu Server 24.04 LTS** para los nodos de producción, junto con contenedorización mediante Docker y orquestación con Kubernetes (runtime: containerd).
 
-La gestión de configuración siguió la metodología *Twelve-Factor Apps*, inyectando credenciales y parámetros mediante ConfigMaps y Secrets de Kubernetes, sin almacenarlos en el repositorio. El análisis se centró en identificar la combinación más eficiente en términos de latencia, tolerancia a fallos, seguridad perimetral (DevSecOps) y coste operativo, aplicando metodologías **FinOps** y principios de *Green Cloud Computing*.
+La gestión de configuración siguió la metodología _Twelve-Factor Apps_, inyectando credenciales y parámetros mediante ConfigMaps y Secrets de Kubernetes, sin almacenarlos en el repositorio. El análisis se centró en identificar la combinación más eficiente en términos de latencia, tolerancia a fallos, seguridad perimetral (DevSecOps) y coste operativo, aplicando metodologías **FinOps** y principios de _Green Cloud Computing_.
 
 ### Resultados y Validación (Ingeniería del Caos)
 
 La resiliencia fue validada bajo condiciones de carga extrema (saturación de CPU de hasta **398%**) mediante protocolos de Ingeniería del Caos con 30,000 peticiones HTTP concurrentes:
 
-| Métrica | Resultado |
-|---|---|
-| Tasa de error | **0.04%** |
-| Tiempo de respuesta promedio | **730 ms** |
-| Escalado HPA | 2 → 5 réplicas sin downtime |
-| MTTR ante caída de nodo | Horas → **minutos** (multi-AZ) |
+| Métrica                      | Resultado                      |
+| ---------------------------- | ------------------------------ |
+| Tasa de error                | **0.04%**                      |
+| Tiempo de respuesta promedio | **730 ms**                     |
+| Escalado HPA                 | 2 → 5 réplicas sin downtime    |
+| MTTR ante caída de nodo      | Horas → **minutos** (multi-AZ) |
 
 ---
 
@@ -42,7 +42,7 @@ Se eligió **kubeadm sobre EC2** en lugar de Amazon EKS por dos razones:
 
 Los 3 nodos EC2 (`c7i-flex.large` control plane, 2× `m7i-flex.large` workers) se aprovisionaron con capacidad fija por diseño experimental: las pruebas de carga deben ejecutarse en un entorno de hardware controlado y reproducible. Si los nodos escalaran automáticamente durante la prueba, las métricas obtenidas no serían comparables entre ejecuciones.
 
-> Esto contrasta deliberadamente con el antipatrón de *static sizing* que describe el AWS Well-Architected Framework (tratar la nube como un collocated data center). En producción sin restricciones, el patrón correcto sería Auto Scaling Groups con Target Tracking o EKS con Karpenter.
+> Esto contrasta deliberadamente con el antipatrón de _static sizing_ que describe el AWS Well-Architected Framework (tratar la nube como un collocated data center). En producción sin restricciones, el patrón correcto sería Auto Scaling Groups con Target Tracking o EKS con Karpenter.
 
 ### 3. ALB Multi-AZ como componente elástico nativo
 
@@ -50,27 +50,30 @@ El **Application Load Balancer** (subnets en `us-east-1a` y `us-east-1b`) es el�
 
 ### 3.5 Calico como CNI — segmentación de red interna con Network Policies
 
-Se eligió **Calico** como Container Network Interface (CNI) en lugar de Flannel por una razón funcional directamente alineada al tema de la tesis (*diseño e implementación de infraestructura cloud basada en Linux para aplicaciones web escalables*): la capacidad de aplicar **Network Policies** nativas de Kubernetes.
+Se eligió **Calico** como Container Network Interface (CNI) en lugar de Flannel por una razón funcional directamente alineada al tema de la tesis (_diseño e implementación de infraestructura cloud basada en Linux para aplicaciones web escalables_): la capacidad de aplicar **Network Policies** nativas de Kubernetes.
 
 **Flannel** ofrece únicamente conectividad L3 entre pods (overlay VXLAN), sin ningún mecanismo de segmentación. En un namespace sin Network Policies, cualquier pod puede conectarse a cualquier otro pod del cluster en cualquier puerto — incluyendo conexiones desde el frontend directamente al pod del backend omitiendo el Service, o desde un pod comprometido hacia el endpoint de RDS.
 
 **Calico** implementa el mismo overlay de red pero además actúa como controlador de Network Policies, programando reglas `iptables`/`eBPF` en cada nodo para hacer cumplir las políticas declaradas en los manifiestos de Kubernetes.
 
-**Modelo de segmentación implementado** (`k8s-manifests/07-network-policies.yaml`):
+**Modelo de segmentación implementado** (`k8s-manifests/07-network-policies.yaml`, `k8s-manifests/monitoring/08-network-policies.yaml`):
 
 ```
 Principio: default-deny-ingress + allowlist explícita por servicio
 
 Internet → ALB → NodePort → [frontend] ──(8000)──→ [backend] → RDS :5432
                                 ↑                      ↑
-                         allow desde nodo        allow desde frontend
-                         (filtrado por SG AWS)   y desde ALB via NodePort
+                         allow desde VPC CIDR      allow desde frontend
+                         (10.0.0.0/16, port 3000)   y desde ALB via NodePort
 
 Flujos denegados implícitamente:
   ✗ frontend → RDS directamente (5432)
   ✗ backend  → frontend (el backend no inicia conexiones hacia el frontend)
   ✗ monitoring namespace → pods de kuro sin autorización explícita
+  ✗ tráfico externo directo a Prometheus (no expuesto vía ALB)
 ```
+
+El namespace `monitoring` tiene su propio conjunto de NetworkPolicies (`08-network-policies.yaml`) con el mismo modelo deny-all: Grafana acepta ingress solo desde la VPC en puerto 3000, Prometheus solo puede scrapear namespaces autorizados (`kuro`, `kube-system`, `monitoring`), y Node Exporter solo acepta conexiones desde Prometheus.
 
 **Nota sobre el CIDR:** Flannel usa `10.244.0.0/16` por defecto; Calico usa `192.168.0.0/16`. El pod CIDR está centralizado en `group_vars/all.yml` y se pasa a `kubeadm` via `podSubnet`, garantizando consistencia entre el plano de control y el CNI.
 
@@ -79,6 +82,7 @@ Flujos denegados implícitamente:
 La práctica del AWS Well-Architected Framework exige que la capa de datos resida en **subnets privadas** sin ruta al Internet Gateway. Esta arquitectura usa las mismas subnets públicas para RDS por restricción de costo: un **NAT Gateway** tiene un costo fijo de ~$45/mes que excede el presupuesto del Free Tier.
 
 **Controles compensatorios aplicados:**
+
 - `publicly_accessible = false` en RDS — AWS no asigna IP pública al endpoint.
 - Security Group restringido — solo los nodos K8s tienen acceso al puerto 5432.
 - Cifrado en tránsito habilitado por defecto en PostgreSQL 16.
@@ -87,7 +91,7 @@ La práctica del AWS Well-Architected Framework exige que la capa de datos resid
 
 ### 5. HPA con Target Tracking — elasticidad real dentro de los nodos
 
-El **Horizontal Pod Autoscaler** (`06-hpa.yaml`) implementa el patrón de *Target Tracking Scaling* descrito en el pilar de Eficiencia de Rendimiento del Well-Architected Framework:
+El **Horizontal Pod Autoscaler** (`06-hpa.yaml`) implementa el patrón de _Target Tracking Scaling_ descrito en el pilar de Eficiencia de Rendimiento del Well-Architected Framework:
 
 ```
 CPU promedio > 50% → K8s escala de 2 a 5 réplicas automáticamente
@@ -102,29 +106,31 @@ El pipeline de despliegue (`despliegue-app.yml`) resuelve la IP del control plan
 
 ### 7. Stack de Observabilidad automatizado y seguro (Prometheus + Grafana)
 
-El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observability.yml`), que renderiza y aplica los manifiestos de K8s ubicados en `k8s-manifests/monitoring/`. Se usa el módulo `template` de Ansible para sustituir las versiones de imagen (definidas en `group_vars/all.yml`) antes de aplicarlos al cluster. 
+El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observability.yml`), que renderiza y aplica los manifiestos de K8s ubicados en `k8s-manifests/monitoring/`. Se usa el módulo `template` de Ansible para sustituir las versiones de imagen (definidas en `group_vars/all.yml`) antes de aplicarlos al cluster.
 
 Para garantizar la seguridad perimetral del panel de administración, **Grafana se encuentra detrás del Application Load Balancer (ALB)**, expuesto mediante un subdominio exclusivo (`grafana.kurocustom.uk`) con cifrado TLS/HTTPS. Adicionalmente, se previno la fuga de información (Information Disclosure) eliminando las contraseñas en texto plano de los manifiestos; ahora se inyectan dinámicamente mediante **Kubernetes Secrets** alimentados por GitHub Actions.
 
 **Auto-Provisioning de Dashboards ("Infraestructura Inmutable")**
-Con el objetivo de mantener un entorno verdaderamente reproducible (sin intervención manual de configuración post-despliegue), se implementó un mecanismo de *Provisioning* automático en Grafana mediante un **Init Container** y **ConfigMaps**. Al inicializarse, el pod de Grafana descarga dinámicamente desde la API oficial los dashboards necesarios para medir las pruebas de Ingeniería del Caos (JMeter):
+Con el objetivo de mantener un entorno verdaderamente reproducible (sin intervención manual de configuración post-despliegue), se implementó un mecanismo de _Provisioning_ automático en Grafana mediante un **Init Container** y **ConfigMaps**. Al inicializarse, el pod de Grafana descarga dinámicamente desde la API oficial los dashboards necesarios para medir las pruebas de Ingeniería del Caos (JMeter):
+
 - **Node Exporter (ID 1860):** Para el monitoreo de saturación física en los nodos EC2.
 - **cAdvisor (ID 14282):** Para la medición granular de consumo (CPU/RAM) a nivel de pod/contenedor, consumido directamente desde el Kubelet.
-*Prometheus queda configurado automáticamente como Data Source por defecto en el arranque.*
+  _Prometheus queda configurado automáticamente como Data Source por defecto en el arranque._
 
-| Componente | Tipo K8s | Puerto NodePort | Función |
-|---|---|---|---|
-| Node Exporter | DaemonSet | — | Métricas del host: CPU, RAM, disco, red |
-| Prometheus | Deployment | 30090 | Scraping y almacenamiento de series de tiempo |
-| Grafana | Deployment | 30300 | Visualización de dashboards (Expuesto de forma segura vía ALB) |
+| Componente    | Tipo K8s   | Puerto NodePort | Función                                                        |
+| ------------- | ---------- | --------------- | -------------------------------------------------------------- |
+| Node Exporter | DaemonSet  | —               | Métricas del host: CPU, RAM, disco, red                        |
+| Prometheus    | Deployment | 30090           | Scraping y almacenamiento de series de tiempo                  |
+| Grafana       | Deployment | 30300           | Visualización de dashboards (Expuesto de forma segura vía ALB) |
 
 > **Limitación conocida:** Los datos de Prometheus y Grafana se almacenan en `emptyDir` (volumen efímero). Si el pod se reinicia, el historial se pierde. En producción se requeriría un `PersistentVolume` (ej.: EBS). Para el entorno de investigación es suficiente ya que las capturas se tomaban durante las sesiones de prueba.
 
 ### 8. Gestión de DNS Automatizada (Terraform + Cloudflare)
 
-Para resolver el reto del cambio dinámico de URLs e IPs al destruir y recrear la infraestructura en AWS, el proyecto integra el **proveedor de Cloudflare en Terraform** (`cloudflare.tf`). 
+Para resolver el reto del cambio dinámico de URLs e IPs al destruir y recrear la infraestructura en AWS, el proyecto integra el **proveedor de Cloudflare en Terraform** (`cloudflare.tf`).
 
 Durante el pipeline de despliegue (`despliegue-infra.yml`), Terraform se comunica automáticamente con la API de Cloudflare para:
+
 1. Crear los registros DNS de validación de ACM, permitiendo a AWS emitir los certificados SSL sin intervención manual.
 2. Actualizar los registros CNAME del dominio principal (`www` y `@`) y del stack de observabilidad (`grafana`) para que apunten al nuevo ALB recién aprovisionado.
 
@@ -142,15 +148,15 @@ Una arquitectura JAMstack alternativa habría consistido en servir el build est�
 
 ### 10. Ausencia de VPC Gateway Endpoints (S3 / DynamoDB)
 
-Los **VPC Gateway Endpoints** permiten que el tráfico `EC2 → S3` o `EC2 → DynamoDB` se enrute de forma privada a través de la red troncal de AWS, sin atravesar el Internet Gateway. Esto elimina el costo de transferencia de datos de salida (*data transfer out*) y reduce la latencia en arquitecturas con flujo continuo de datos entre EC2 y S3.
+Los **VPC Gateway Endpoints** permiten que el tráfico `EC2 → S3` o `EC2 → DynamoDB` se enrute de forma privada a través de la red troncal de AWS, sin atravesar el Internet Gateway. Esto elimina el costo de transferencia de datos de salida (_data transfer out_) y reduce la latencia en arquitecturas con flujo continuo de datos entre EC2 y S3.
 
 En este proyecto, la ausencia de endpoints es una decisión consciente basada en el análisis del patrón de acceso real a S3:
 
-| Caso de uso S3 | Frecuencia | Justificación |
-|---|---|---|
-| Remote state de Terraform (`kuro-custom-tfstate`) | Puntual (solo en CI/CD) | Operación de minutos por despliegue, no en el path crítico de la aplicación |
-| Logs de acceso del ALB (`kuro-alb-logs`) | Escritura pasiva del propio ALB | El ALB escribe directamente; los EC2 no leen estos logs en runtime |
-| Acceso desde pods K8s a S3 | Inexistente en runtime | Las imágenes de productos se gestionan mediante Cloudinary (servicio externo) |
+| Caso de uso S3                                    | Frecuencia                      | Justificación                                                                 |
+| ------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Remote state de Terraform (`kuro-custom-tfstate`) | Puntual (solo en CI/CD)         | Operación de minutos por despliegue, no en el path crítico de la aplicación   |
+| Logs de acceso del ALB (`kuro-alb-logs`)          | Escritura pasiva del propio ALB | El ALB escribe directamente; los EC2 no leen estos logs en runtime            |
+| Acceso desde pods K8s a S3                        | Inexistente en runtime          | Las imágenes de productos se gestionan mediante Cloudinary (servicio externo) |
 
 Dado que ningún flujo de datos en el path crítico de la aplicación involucra tráfico EC2 → S3 de forma continua, el costo de transferencia de datos que un Gateway Endpoint mitigaría es despreciable en este entorno. Añadir el endpoint introduciría entradas adicionales en la Route Table y política de endpoint sin un beneficio medible.
 
@@ -210,16 +216,16 @@ Internet
 
 ## Tecnologías
 
-| Capa | Tecnologías |
-|---|---|
-| **Aplicación** | Python, Django, DRF, Astro, React, PostgreSQL |
-| **Contenedores** | Docker, containerd, Kubernetes (kubeadm), Calico CNI |
-| **IaC** | Terraform ≥ 1.10, provider AWS ~6.0 |
-| **Configuración** | Ansible, inventario dinámico EC2 (plugin `aws_ec2`) |
-| **CI/CD** | GitHub Actions, Docker Hub |
-| **DevSecOps** | Dependabot, Trivy, Tfsec, `runAsNonRoot`, Security Groups dinámicos |
-| **Observabilidad** | Prometheus, Node Exporter, Grafana |
-| **Cloud** | AWS (EC2, RDS, ALB, ACM, S3, VPC), GCP (evaluación comparativa) |
+| Capa               | Tecnologías                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| **Aplicación**     | Python, Django, DRF, Astro, React, PostgreSQL                       |
+| **Contenedores**   | Docker, containerd, Kubernetes (kubeadm), Calico CNI                |
+| **IaC**            | Terraform ≥ 1.10, provider AWS ~6.0                                 |
+| **Configuración**  | Ansible, inventario dinámico EC2 (plugin `aws_ec2`)                 |
+| **CI/CD**          | GitHub Actions, Docker Hub                                          |
+| **DevSecOps**      | Dependabot, Trivy, Tfsec, `runAsNonRoot`, Security Groups dinámicos |
+| **Observabilidad** | Prometheus, Node Exporter, Grafana                                  |
+| **Cloud**          | AWS (EC2, RDS, ALB, ACM, S3, VPC), GCP (evaluación comparativa)     |
 
 ## Requisitos
 
@@ -296,6 +302,16 @@ El estado de Terraform se almacena remotamente en S3 (`kuro-custom-tfstate`) con
 - Los secrets de producción se inyectan en tiempo de ejecución del pipeline (GitHub Secrets → `sed` → manifiestos K8s).
 - Los pods corren con `runAsNonRoot: true` y `allowPrivilegeEscalation: false`.
 - El puerto SSH (22) solo se abre temporalmente durante el deploy y se cierra con `if: always()`.
+
+### Hardening de red
+
+| Control                                 | Implementación                                                                                                                                                                                              |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SG separado para Control Plane**      | `sg_kuro_control_plane` sin regla de NodePorts desde el ALB. El CP solo expone 6443 desde la VPC (`10.0.0.0/16`). Workers y CP se comunican via `aws_security_group_rule` para evitar dependencia circular. |
+| **NetworkPolicy frontend sin wildcard** | `allow-ingress-frontend` ya no usa `ingress: - {}`. Ahora restringe el origen a `ipBlock: 10.0.0.0/16` en puerto `3000`.                                                                                    |
+| **NetworkPolicies para monitoring**     | El namespace `monitoring` tiene modelo deny-all propio (`08-network-policies.yaml`): Grafana solo acepta VPC en puerto 3000, Prometheus solo scrapea namespaces autorizados.                                |
+| **SSH hardening (Ansible)**             | `hardening.yml` aplica: `PasswordAuthentication no`, `PermitRootLogin no`, `X11Forwarding no`, `MaxAuthTries 3`, `AllowTcpForwarding no`, `LoginGraceTime 30`.                                              |
+| **Trivy bloquea CVEs críticos**         | `seguridad.yml` usa `exit-code: 1` en Trivy para severity `CRITICAL` — el pipeline falla y bloquea merges si alguna imagen tiene un CVE crítico.                                                            |
 
 ## Licencia
 

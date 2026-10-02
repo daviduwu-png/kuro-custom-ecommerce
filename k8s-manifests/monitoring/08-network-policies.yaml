@@ -1,0 +1,191 @@
+# =============================================================================
+# Network Policies — Namespace monitoring
+# =============================================================================
+# Aplica las mismas reglas de mínimo privilegio al stack de observabilidad.
+#
+# Flujos PERMITIDOS:
+#   1. ALB        → Grafana (NodePort 3000)      — acceso al dashboard
+#   2. Prometheus → kuro namespace (port 8000)   — scraping de métricas de app
+#   3. Prometheus → kube-system                  — scraping de kube-state-metrics
+#   4. Prometheus → monitoring (self)            — acceso a node-exporter (9100)
+#   5. Grafana    → Prometheus (port 9090)       — datasource
+#   6. Egress DNS — resolución de nombres
+#   7. Egress 443 — plugins de Grafana (grafana.com)
+#
+# Flujos DENEGADOS por default:
+#   ✗ Pod del namespace kuro accediendo a Prometheus/Grafana directamente
+#   ✗ Tráfico externo directo a Prometheus (sin pasar por ALB)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Deny-all ingress por default en el namespace monitoring
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress-monitoring
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# -----------------------------------------------------------------------------
+# 2. Grafana — acepta tráfico desde la VPC via NodePort (ALB en puerto 3000)
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-grafana
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Ingress
+  ingress:
+    # Tráfico desde el ALB via NodePort (IP del nodo, dentro de la VPC)
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+# -----------------------------------------------------------------------------
+# 3. Prometheus — acepta scraping desde su propio namespace (self)
+#    y desde el namespace kuro (si hay métricas expuestas por la app)
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-prometheus
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+    - Ingress
+  ingress:
+    # Grafana consulta a Prometheus como datasource (port 9090)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: grafana
+      ports:
+        - protocol: TCP
+          port: 9090
+
+---
+# -----------------------------------------------------------------------------
+# 4. Node Exporter — acepta scraping solo desde Prometheus (mismo namespace)
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-node-exporter
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: node-exporter
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9100
+
+---
+# -----------------------------------------------------------------------------
+# 5. Egress de Prometheus — scraping de métricas en kuro y kube-system
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-prometheus
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Scraping de métricas de pods en el namespace kuro (backend: 8000)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kuro
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Scraping de node-exporter y kube-state-metrics en kube-system / mismo namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+    # Scraping de node-exporter en el mismo namespace monitoring (self)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: node-exporter
+      ports:
+        - protocol: TCP
+          port: 9100
+    # kubelet metrics (cada nodo en puerto 10250) — IPs de los nodos en la VPC
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 10250
+
+---
+# -----------------------------------------------------------------------------
+# 6. Egress de Grafana — datasource Prometheus + plugins externos
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-grafana
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Prometheus datasource (mismo namespace)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    # HTTPS — descarga de plugins de Grafana (grafana.com)
+    - ports:
+        - protocol: TCP
+          port: 443
