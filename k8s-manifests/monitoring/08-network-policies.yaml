@@ -3,18 +3,26 @@
 # =============================================================================
 # Aplica las mismas reglas de mínimo privilegio al stack de observabilidad.
 #
+# NOTA IMPORTANTE — Node Exporter y hostNetwork:
+#   Node Exporter corre con hostNetwork: true, por lo que comparte la IP del
+#   nodo host. Calico NO aplica NetworkPolicies a pods con hostNetwork (el
+#   tráfico sale de la interfaz del host, fuera del pod network namespace).
+#   El scraping de Prometheus - Node Exporter va pod-IP - host-IP:9100,
+#   lo que se controla con la regla ipBlock 10.0.0.0/16 del egress de Prometheus.
+#
 # Flujos PERMITIDOS:
-#   1. ALB        → Grafana (NodePort 3000)      — acceso al dashboard
-#   2. Prometheus → kuro namespace (port 8000)   — scraping de métricas de app
-#   3. Prometheus → kube-system                  — scraping de kube-state-metrics
-#   4. Prometheus → monitoring (self)            — acceso a node-exporter (9100)
-#   5. Grafana    → Prometheus (port 9090)       — datasource
-#   6. Egress DNS — resolución de nombres
-#   7. Egress 443 — plugins de Grafana (grafana.com)
+#   1. ALB        → Grafana (VPC CIDR, port 3000)  — acceso al dashboard
+#   2. Prometheus → kuro namespace (port 8000)      — scraping de métricas de app
+#   3. Prometheus → host IPs VPC (port 9100)        — node-exporter via hostNetwork
+#   4. Prometheus → host IPs VPC (port 10250)       — kubelet/cAdvisor metrics
+#   5. Prometheus → kube-system                     — kube-state-metrics (RBAC)
+#   6. Prometheus → K8s API (port 6443)             — kubernetes_sd_configs discovery
+#   7. Grafana    → Prometheus (port 9090)          — datasource
+#   8. Egress DNS + 443                             — resolución + plugins/dashboards Grafana
 #
 # Flujos DENEGADOS por default:
 #   ✗ Pod del namespace kuro accediendo a Prometheus/Grafana directamente
-#   ✗ Tráfico externo directo a Prometheus (sin pasar por ALB)
+#   ✗ Tráfico externo directo a Prometheus (no expuesto vía ALB)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -46,7 +54,7 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Tráfico desde el ALB via NodePort (IP del nodo, dentro de la VPC)
+    # Tráfico desde la VPC (ALB llega como IP del nodo, dentro de 10.0.0.0/16)
     - from:
         - ipBlock:
             cidr: 10.0.0.0/16
@@ -56,8 +64,7 @@ spec:
 
 ---
 # -----------------------------------------------------------------------------
-# 3. Prometheus — acepta scraping desde su propio namespace (self)
-#    y desde el namespace kuro (si hay métricas expuestas por la app)
+# 3. Prometheus — acepta consultas de Grafana como datasource (port 9090)
 # -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -71,7 +78,6 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # Grafana consulta a Prometheus como datasource (port 9090)
     - from:
         - podSelector:
             matchLabels:
@@ -82,31 +88,15 @@ spec:
 
 ---
 # -----------------------------------------------------------------------------
-# 4. Node Exporter — acepta scraping solo desde Prometheus (mismo namespace)
-# -----------------------------------------------------------------------------
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-ingress-node-exporter
-  namespace: monitoring
-spec:
-  podSelector:
-    matchLabels:
-      app: node-exporter
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: prometheus
-      ports:
-        - protocol: TCP
-          port: 9100
-
----
-# -----------------------------------------------------------------------------
-# 5. Egress de Prometheus — scraping de métricas en kuro y kube-system
+# 4. Egress de Prometheus — scraping de todos los targets configurados
+#
+#    Targets según prometheus-config.yaml:
+#      a) self ('localhost:9090'): loopback, exento de NetworkPolicy.
+#      b) node-exporter: usa hostNetwork - IP del nodo host en VPC (ipBlock :9100)
+#      c) kubelet/cAdvisor: API HTTPS del kubelet en cada nodo (ipBlock :10250)
+#      d) kuro-pods: pods con annotation prometheus.io/scrape=true (namespaceSelector)
+#      e) kube-system: kube-state-metrics vía ServiceAccount RBAC (namespaceSelector)
+#      f) kubernetes_sd_configs: necesita alcanzar el API Server (ipBlock :6443)
 # -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -120,44 +110,43 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # DNS
+    # DNS — requerido para resolver nombres de service y API de K8s
     - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
-    # Scraping de métricas de pods en el namespace kuro (backend: 8000)
+    # Node Exporter (hostNetwork :9100) + kubelet/cAdvisor (:10250) + K8s API (:6443)
+    # Todos usan la IP del nodo host, dentro del CIDR de la VPC.
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 9100 # node-exporter metrics (hostNetwork)
+        - protocol: TCP
+          port: 10250 # kubelet API — cAdvisor /metrics/cadvisor
+        - protocol: TCP
+          port: 6443 # K8s API Server — kubernetes_sd_configs discovery
+    # kuro namespace — pods con annotation prometheus.io/scrape=true
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kuro
       ports:
         - protocol: TCP
-          port: 8000
-    # Scraping de node-exporter y kube-state-metrics en kube-system / mismo namespace
+          port: 8000 # backend Django metrics endpoint
+    # kube-system — kube-state-metrics y otros componentes del plano de control
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
-    # Scraping de node-exporter en el mismo namespace monitoring (self)
-    - to:
-        - podSelector:
-            matchLabels:
-              app: node-exporter
-      ports:
-        - protocol: TCP
-          port: 9100
-    # kubelet metrics (cada nodo en puerto 10250) — IPs de los nodos en la VPC
-    - to:
-        - ipBlock:
-            cidr: 10.0.0.0/16
-      ports:
-        - protocol: TCP
-          port: 10250
 
 ---
 # -----------------------------------------------------------------------------
-# 6. Egress de Grafana — datasource Prometheus + plugins externos
+# 5. Egress de Grafana — datasource Prometheus + descarga de dashboards/plugins
+#    El initContainer 'download-dashboards' descarga JSONs desde grafana.com/api
+#    vía HTTPS — requiere egress al puerto 443.
 # -----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -177,7 +166,7 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Prometheus datasource (mismo namespace)
+    # Prometheus datasource (mismo namespace monitoring)
     - to:
         - podSelector:
             matchLabels:
@@ -185,7 +174,7 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
-    # HTTPS — descarga de plugins de Grafana (grafana.com)
+    # HTTPS — grafana.com/api para dashboards (IDs 1860, 22523) y plugins
     - ports:
         - protocol: TCP
           port: 443
