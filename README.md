@@ -313,6 +313,57 @@ El estado de Terraform se almacena remotamente en S3 (`kuro-custom-tfstate`) con
 | **SSH hardening (Ansible)**             | `hardening.yml` aplica: `PasswordAuthentication no`, `PermitRootLogin no`, `X11Forwarding no`, `MaxAuthTries 3`, `AllowTcpForwarding no`, `LoginGraceTime 30`.                                              |
 | **Trivy bloquea CVEs críticos**         | `seguridad.yml` usa `exit-code: 1` en Trivy para severity `CRITICAL` — el pipeline falla y bloquea merges si alguna imagen tiene un CVE crítico.                                                            |
 
+## Trabajo Futuro y Jerarquía Completa de Escalabilidad
+
+Esta sección documenta los patrones de escalabilidad y resiliencia que están fuera del alcance del presente trabajo de tesis, junto con la justificación técnica de por qué no se implementaron en el entorno de investigación.
+
+### Jerarquía de escalabilidad cloud-native
+
+La arquitectura implementada cubre los dos primeros niveles de la jerarquía de escalabilidad de una aplicación cloud-native sobre Kubernetes:
+
+```
+Nivel 1 — Pod Scaling       [IMPLEMENTADO]
+  └→ HPA: escala réplicas de 2 a 5 por presión de CPU (50% target)
+     Validado bajo 30,000 peticiones concurrentes sin downtime.
+
+Nivel 2 — Traffic Scaling   [IMPLEMENTADO]
+  └→ ALB Multi-AZ: distribuye carga entre workers en us-east-1a y us-east-1b.
+     Elástico por diseño interno de AWS sin intervención del operador.
+
+Nivel 3 — Node Self-Healing [TRABAJO FUTURO — Disponibilidad]
+  └→ ASG en modo self-healing (min=max=desired=2): reemplaza automáticamente
+     un worker caído sin requerir terraform apply manual.
+     Requiere: Launch Template con AMI pre-baked + kubeadm join token en SSM.
+
+Nivel 4 — Node Scaling      [TRABAJO FUTURO — Escalabilidad de nodos]
+  └→ ASG con Cluster Autoscaler: escala el número de nodos workers según la
+     presión de scheduling de K8s (pods en estado Pending).
+     Patrón ideal: EKS + Managed Node Groups + Karpenter (provisionamiento
+     just-in-time de nodos basado en el perfil de recursos del pod).
+```
+
+### Limitación de nodo nivel 3 y 4 en este entorno
+
+La ausencia del Nivel 3 y 4 es una **decisión metodológica consciente**, no una omisión:
+
+- **Nivel 3 (self-healing):** Un ASG con `min=max=desired=2` mantiene el costo idéntico al setup actual (siempre 2 workers), pero la integración con kubeadm self-managed requiere un mecanismo de auto-join (SSM Parameter Store + token rotation) que está fuera del alcance experimental del trabajo.
+
+- **Nivel 4 (node scaling):** El Cluster Autoscaler de K8s requiere integración con el cloud provider para ordenar instancias al ASG. Esta integración es nativa en EKS (con IAM Roles for Service Accounts) pero requiere configuración manual compleja en clusters kubeadm. La restricción de costo del Free Tier (EKS cobra $0.10/hora solo por el control plane) excluye esta opción.
+
+- **Restricción experimental:** Los nodos de tamaño fijo garantizan que las métricas de las pruebas de Ingeniería del Caos (latencia, tasa de error, escalado de pods) sean reproducibles y comparables entre ejecuciones. Nodos dinámicos introducirían variabilidad en el hardware disponible que invalidaría la metodología.
+
+### Patrón de producción recomendado
+
+Para un despliegue de producción sin restricciones de costo ni metodología experimental, la arquitectura ideal sería:
+
+```
+EKS (control plane gestionado por AWS)
+  + Managed Node Groups con ASG (self-healing nativo)
+  + Karpenter (node provisioning just-in-time, reemplaza Cluster Autoscaler)
+  + HPA o KEDA (pod scaling por CPU, memoria o métricas externas)
+  + Spot Instances en el ASG (reducción de costo del 60-70% en workers)
+```
+
 ## Licencia
 
 Este repositorio no incluye un archivo de licencia (`LICENSE`).
