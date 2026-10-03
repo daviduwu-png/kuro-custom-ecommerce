@@ -102,6 +102,42 @@ resource "aws_security_group" "control_plane_sg" {
 }
 
 # =============================================================================
+# Security Group — RDS PostgreSQL
+# SG dedicado: solo permite el puerto 5432 desde los workers.
+# NO reutiliza el SG de los workers (que tiene NodePorts y reglas de ALB).
+# RDS está en subnets privadas — este SG es la última capa de control de acceso.
+# =============================================================================
+resource "aws_security_group" "rds_sg" {
+  name        = "sg_kuro_rds"
+  description = "Security Group dedicado a RDS PostgreSQL — solo permite 5432 desde workers"
+  vpc_id      = aws_vpc.kuro_vpc.id
+
+  # PostgreSQL — accesible únicamente desde los workers del cluster K8s
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.seguridad_kuro.id]
+    description     = "PostgreSQL — solo desde workers K8s (seguridad_kuro)"
+  }
+
+  # Sin egress — RDS no necesita iniciar conexiones de salida
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["127.0.0.1/32"]  # Loopback — bloquea egress efectivamente
+    description = "RDS no inicia conexiones de salida"
+  }
+
+  tags = {
+    Proyecto = "Kuro-Custom"
+    Entorno  = "Laboratorio"
+    Rol      = "Capa-Datos"
+  }
+}
+
+# =============================================================================
 # Reglas de cross-referencia entre SGs (usando aws_security_group_rule para
 # evitar dependencia circular entre los dos recursos de Security Group).
 # =============================================================================

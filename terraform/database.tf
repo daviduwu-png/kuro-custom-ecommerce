@@ -13,7 +13,7 @@ resource "aws_db_instance" "kuro_postgres" {
   publicly_accessible  = false
   db_subnet_group_name = aws_db_subnet_group.kuro_db_subnet_group.name
 
-  vpc_security_group_ids = [aws_security_group.seguridad_kuro.id]
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
   tags = {
     Proyecto = "Kuro-Custom"

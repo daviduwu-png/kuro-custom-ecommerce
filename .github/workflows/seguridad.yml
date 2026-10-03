@@ -20,9 +20,9 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
           working_directory: ./terraform
-          # soft_fail: true es intencional — el warning de "RDS en subnet pública"
-          # es una limitación conocida del Free Tier de AWS (subnets privadas generan
-          # costo por NAT Gateway). No romper el pipeline por este hallazgo aceptado.
+          # soft_fail: true — los workers EC2 están en subnets públicas (necesitan
+          # internet para pull de imágenes y paquetes sin NAT Gateway). Tfsec lo
+          # marca como warning; es una decisión arquitectónica aceptada y documentada.
           soft_fail: true
 
   seguridad-imagenes:
@@ -40,7 +40,7 @@ jobs:
         with:
           image-ref: "kuro-backend:test"
           format: "table"
-          exit-code: "1"   # Falla el pipeline si se detectan CVEs CRÍTICOS
+          exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
           severity: "CRITICAL"
 
       - name: Build Frontend (Local)
@@ -51,5 +51,5 @@ jobs:
         with:
           image-ref: "kuro-frontend:test"
           format: "table"
-          exit-code: "1"   # Falla el pipeline si se detectan CVEs CRÍTICOS
+          exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
           severity: "CRITICAL"

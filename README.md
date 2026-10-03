@@ -77,17 +77,23 @@ El namespace `monitoring` tiene su propio conjunto de NetworkPolicies (`08-netwo
 
 **Nota sobre el CIDR:** Flannel usa `10.244.0.0/16` por defecto; Calico usa `192.168.0.0/16`. El pod CIDR está centralizado en `group_vars/all.yml` y se pasa a `kubeadm` via `podSubnet`, garantizando consistencia entre el plano de control y el CNI.
 
-### 4. RDS en subnets públicas con `publicly_accessible = false`
+### 4. RDS en subnets privadas sin NAT Gateway
 
-La práctica del AWS Well-Architected Framework exige que la capa de datos resida en **subnets privadas** sin ruta al Internet Gateway. Esta arquitectura usa las mismas subnets públicas para RDS por restricción de costo: un **NAT Gateway** tiene un costo fijo de ~$45/mes que excede el presupuesto del Free Tier.
+La práctica del AWS Well-Architected Framework exige que la capa de datos resida en **subnets privadas** sin ruta al Internet Gateway. Esta arquitectura **cumple este requisito** mediante subnets privadas dedicadas (`10.0.10.0/24` en us-east-1a y `10.0.11.0/24` en us-east-1b) sin costo adicional.
 
-**Controles compensatorios aplicados:**
+**La distinción clave que hace esto posible sin NAT Gateway:**
 
-- `publicly_accessible = false` en RDS — AWS no asigna IP pública al endpoint.
-- Security Group restringido — solo los nodos K8s tienen acceso al puerto 5432.
+- Los **workers EC2** están en subnets públicas porque necesitan salida a internet (pull de imágenes Docker, paquetes APT, llamadas a APIs externas).
+- **RDS** nunca inicia conexiones hacia internet — solo responde a conexiones entrantes desde los workers. Por lo tanto, una subnet privada (sin ruta al Internet Gateway) es suficiente.
+- El routing interno de la VPC permite que los workers (`10.0.1.0/24`, `10.0.2.0/24`) alcancen RDS (`10.0.10.0/24`, `10.0.11.0/24`) sin NAT, ya que ambos están en la misma VPC (`10.0.0.0/16`).
+
+**Controles de seguridad aplicados:**
+
+- Subnets privadas sin Internet Gateway — RDS no tiene ruta de salida ni de entrada desde internet.
+- `publicly_accessible = false` — AWS no asigna IP pública al endpoint.
+- **SG dedicado `sg_kuro_rds`** — solo permite ingress en puerto 5432 desde `seguridad_kuro` (workers). Sin reglas de NodePort, ALB ni inter-worker. Egress bloqueado (RDS no inicia conexiones de salida).
 - Cifrado en tránsito habilitado por defecto en PostgreSQL 16.
 
-**Deuda técnica documentada:** En un entorno de producción real, RDS debe estar en subnets privadas con acceso únicamente desde los nodos de la capa de aplicación.
 
 ### 5. HPA con Target Tracking — elasticidad real dentro de los nodos
 
