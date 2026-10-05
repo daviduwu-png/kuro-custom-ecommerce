@@ -162,7 +162,7 @@
         kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers \
           | grep -v Running | wc -l
       register: calico_not_ready
-      retries: 20
+      retries: 30
       delay: 15
       until: calico_not_ready.stdout | trim == "0"
       changed_when: false
@@ -183,7 +183,7 @@
 
     - name: Instalar Metrics Server (Requerido para HPA)
       become_user: "{{ kubeconfig_user }}"
-      command: "kubectl apply --validate=false -f https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml"
+      command: "kubectl apply --validate=client -f https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml"
       register: metrics_apply
       changed_when: "'created' in metrics_apply.stdout or 'configured' in metrics_apply.stdout"
       retries: 10
@@ -249,11 +249,20 @@
       register: csr_approval
       changed_when: "'Aprobados' in csr_approval.stdout"
 
+    - name: Esperar a que el pod de Metrics Server esté Ready
+      become_user: "{{ kubeconfig_user }}"
+      command: kubectl rollout status deployment/metrics-server -n kube-system
+      register: metrics_rollout
+      retries: 30
+      delay: 15
+      until: metrics_rollout.rc == 0
+      changed_when: false
+
     - name: Verificar que Metrics Server tiene endpoints disponibles
       become_user: "{{ kubeconfig_user }}"
       command: kubectl top nodes
       register: top_nodes
-      retries: 15
-      delay: 10
+      retries: 36
+      delay: 15
       until: top_nodes.rc == 0
       changed_when: false
