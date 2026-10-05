@@ -31,7 +31,6 @@
       - 07-grafana.yaml
 
   tasks:
-
     - name: Crear directorio de staging en el control plane
       become_user: "{{ kubeconfig_user }}"
       file:
@@ -72,14 +71,14 @@
 
     - name: Crear/actualizar ConfigMap de dashboards desde los JSON
       become_user: "{{ kubeconfig_user }}"
-      shell: >
-        kubectl create configmap grafana-dashboards-json
-        --from-file={{ dashboards_dest }}/node-exporter.json
-        --from-file={{ dashboards_dest }}/cadvisor.json
-        -n monitoring
-        --dry-run=client -o yaml | kubectl apply -f -
-      register: dashboards_cm_apply
-      changed_when: "'configured' in dashboards_cm_apply.stdout or 'created' in dashboards_cm_apply.stdout"
+      shell: |
+        kubectl delete configmap grafana-dashboards-json -n monitoring --ignore-not-found
+        kubectl create configmap grafana-dashboards-json \
+          --from-file={{ dashboards_dest }}/node-exporter.json \
+          --from-file={{ dashboards_dest }}/cadvisor.json \
+          -n monitoring
+      register: dashboards_cm_create
+      changed_when: "'created' in dashboards_cm_create.stdout"
 
     - name: Aplicar manifiestos de observabilidad (en orden)
       become_user: "{{ kubeconfig_user }}"
