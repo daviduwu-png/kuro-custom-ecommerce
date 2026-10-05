@@ -22,7 +22,7 @@ resource "aws_security_group" "seguridad_kuro" {
     to_port         = 32767
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
-    description     = "NodePorts K8s — trafico entrante solo desde el ALB"
+    description     = "NodePorts K8s - trafico entrante solo desde el ALB"
   }
 
   # Tráfico interno entre workers (K8s inter-node, Calico CNI VXLAN/BGP, kube-proxy)
@@ -74,7 +74,7 @@ resource "aws_security_group" "control_plane_sg" {
     to_port     = 6443
     protocol    = "tcp"
     cidr_blocks = ["10.0.0.0/16"]
-    description = "Kubernetes API Server — workers + kubectl desde dentro de la VPC"
+    description = "Kubernetes API Server - workers + kubectl desde dentro de la VPC"
   }
 
   # Tráfico interno entre replicas del Control Plane (útil si se escala a multi-master)
@@ -109,7 +109,7 @@ resource "aws_security_group" "control_plane_sg" {
 # =============================================================================
 resource "aws_security_group" "rds_sg" {
   name        = "sg_kuro_rds"
-  description = "Security Group dedicado a RDS PostgreSQL — solo permite 5432 desde workers"
+  description = "Security Group dedicado a RDS PostgreSQL - solo permite 5432 desde workers"
   vpc_id      = aws_vpc.kuro_vpc.id
 
   # PostgreSQL — accesible únicamente desde los workers del cluster K8s
@@ -118,7 +118,7 @@ resource "aws_security_group" "rds_sg" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.seguridad_kuro.id]
-    description     = "PostgreSQL — solo desde workers K8s (seguridad_kuro)"
+    description     = "PostgreSQL - solo desde workers K8s (seguridad_kuro)"
   }
 
   # Sin egress — RDS no necesita iniciar conexiones de salida
@@ -150,10 +150,10 @@ resource "aws_security_group_rule" "workers_to_cp" {
   protocol                 = "-1"
   source_security_group_id = aws_security_group.seguridad_kuro.id
   security_group_id        = aws_security_group.control_plane_sg.id
-  description              = "Trafico inter-nodo: workers → control plane (kubelet, CNI, kubeadm join)"
+  description              = "Trafico inter-nodo: workers -> control plane (kubelet, CNI, kubeadm join)"
 }
 
-# Control Plane - Workers: API server → kubelet (logs, exec, port-forward, metrics)
+# Control Plane - Workers: API server -> kubelet (logs, exec, port-forward, metrics)
 resource "aws_security_group_rule" "cp_to_workers" {
   type                     = "ingress"
   from_port                = 0
@@ -161,5 +161,5 @@ resource "aws_security_group_rule" "cp_to_workers" {
   protocol                 = "-1"
   source_security_group_id = aws_security_group.control_plane_sg.id
   security_group_id        = aws_security_group.seguridad_kuro.id
-  description              = "Trafico inter-nodo: control plane → workers (kubelet API, logs, exec)"
+  description              = "Trafico inter-nodo: control plane -> workers (kubelet API, logs, exec)"
 }
