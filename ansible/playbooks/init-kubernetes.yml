@@ -183,7 +183,7 @@
 
     - name: Instalar Metrics Server (Requerido para HPA)
       become_user: "{{ kubeconfig_user }}"
-      command: "kubectl apply --validate=client -f https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml"
+      command: "kubectl apply --validate=false -f https://github.com/kubernetes-sigs/metrics-server/releases/download/{{ metrics_server_version }}/components.yaml"
       register: metrics_apply
       changed_when: "'created' in metrics_apply.stdout or 'configured' in metrics_apply.stdout"
       retries: 10
@@ -216,12 +216,12 @@
       shell: |
         TOTAL_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo 0)
         TOP_NODES=$(kubectl top nodes --no-headers 2>/dev/null | wc -l || echo 0)
-        
+
         if [ "$TOTAL_NODES" -gt 0 ] && [ "$TOTAL_NODES" -eq "$TOP_NODES" ]; then
           echo "Todos los nodos ya tienen métricas. No se esperan nuevos CSRs."
           exit 0
         fi
-        
+
         for i in {1..15}; do
           PENDING=$(kubectl get csr --no-headers 2>/dev/null | grep -c 'Pending' || echo 0)
           if [ "$PENDING" -ge 1 ]; then
