@@ -104,8 +104,8 @@
         line: 'LoginGraceTime 30'
         state: present
 
-    - name: Reiniciar sshd para aplicar cambios de hardening
+    - name: Reiniciar ssh para aplicar cambios de hardening
       service:
-        name: sshd
+        name: ssh
         state: restarted
 
