@@ -220,14 +220,7 @@
       changed_when: "'patched' in patch_metrics.stdout"
       failed_when: false
 
-    - name: Esperar a que el pod de Metrics Server esté Ready
-      become_user: "{{ kubeconfig_user }}"
-      command: kubectl rollout status deployment/metrics-server -n kube-system --timeout=120s
-      register: metrics_rollout
-      retries: 3
-      delay: 15
-      until: metrics_rollout.rc == 0
-      changed_when: false
+
 
     - name: Aprobar CSRs continuamente y verificar que Metrics Server funciona
       become_user: "{{ kubeconfig_user }}"
