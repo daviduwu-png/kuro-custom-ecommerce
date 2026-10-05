@@ -19,19 +19,6 @@ spec:
         runAsNonRoot: true
         runAsUser: 472      # UID oficial de la imagen de Grafana
         fsGroup: 472
-      initContainers:
-        - name: download-dashboards
-          image: curlimages/curl:latest
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              curl -sL https://grafana.com/api/dashboards/1860/revisions/37/download -o /var/lib/grafana/dashboards/node-exporter.json
-              curl -sL https://grafana.com/api/dashboards/22523/revisions/1/download -o /var/lib/grafana/dashboards/cadvisor.json
-          securityContext:
-            runAsUser: 472
-          volumeMounts:
-            - name: dashboards
-              mountPath: /var/lib/grafana/dashboards
       containers:
         - name: grafana
           image: grafana/grafana:{{ grafana_version }}
@@ -82,6 +69,7 @@ spec:
               mountPath: /etc/grafana/provisioning/dashboards
             - name: dashboards
               mountPath: /var/lib/grafana/dashboards
+              readOnly: true
       volumes:
         - name: data
           emptyDir: {}
@@ -92,7 +80,8 @@ spec:
           configMap:
             name: grafana-dashboards-provider
         - name: dashboards
-          emptyDir: {}
+          configMap:
+            name: grafana-dashboards-json
 ---
 apiVersion: v1
 kind: Service
