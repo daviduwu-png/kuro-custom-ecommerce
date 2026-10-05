@@ -138,14 +138,12 @@ jobs:
       - name: Cerrar SSH temporal del runner
         if: always() && github.event.inputs.action == 'apply' && steps.ssh-open.outcome == 'success'
         run: |
-          # Revocar en ambos SGs (workers + control plane)
+          # Revocar en ambos SGs usando --ip-permissions (mismo formato que authorize)
           for SG in "$SG_ID_WORKERS" "$SG_ID_CP"; do
             if [ -n "$SG" ] && [ "$SG" != "None" ]; then
               aws ec2 revoke-security-group-ingress \
                 --group-id "$SG" \
-                --protocol tcp \
-                --port 22 \
-                --cidr "$RUNNER_IP" \
+                --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP}]" \
               || echo "La regla en $SG ya no existe o fue revocada"
             fi
           done

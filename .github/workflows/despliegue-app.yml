@@ -113,9 +113,7 @@ jobs:
         run: |
           aws ec2 revoke-security-group-ingress \
             --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 22 \
-            --cidr "$RUNNER_IP" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP}]" \
           || echo "La regla ya no existe"
         env:
           SG_ID: ${{ env.SG_ID }}

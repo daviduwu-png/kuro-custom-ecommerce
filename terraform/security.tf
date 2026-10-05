@@ -150,7 +150,7 @@ resource "aws_security_group_rule" "workers_to_cp" {
   protocol                 = "-1"
   source_security_group_id = aws_security_group.seguridad_kuro.id
   security_group_id        = aws_security_group.control_plane_sg.id
-  description              = "Trafico inter-nodo: workers -> control plane (kubelet, CNI, kubeadm join)"
+  description              = "Trafico inter-nodo: workers to control plane (kubelet, CNI, kubeadm join)"
 }
 
 # Control Plane - Workers: API server -> kubelet (logs, exec, port-forward, metrics)
@@ -161,5 +161,5 @@ resource "aws_security_group_rule" "cp_to_workers" {
   protocol                 = "-1"
   source_security_group_id = aws_security_group.control_plane_sg.id
   security_group_id        = aws_security_group.seguridad_kuro.id
-  description              = "Trafico inter-nodo: control plane -> workers (kubelet API, logs, exec)"
+  description              = "Trafico inter-nodo: control plane to workers (kubelet API, logs, exec)"
 }
