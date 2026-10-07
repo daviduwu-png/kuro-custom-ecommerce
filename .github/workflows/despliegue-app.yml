@@ -80,7 +80,7 @@ jobs:
         run: |
           RUNNER_IP="$(curl -s https://checkip.amazonaws.com)/32"
           SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=group-name,Values=sg_kuro_custom" \
+            --filters "Name=group-name,Values=sg_kuro_control_plane" \
             --query "SecurityGroups[0].GroupId" \
             --output text)
 
@@ -113,9 +113,7 @@ jobs:
         run: |
           aws ec2 revoke-security-group-ingress \
             --group-id "$SG_ID" \
-            --protocol tcp \
-            --port 22 \
-            --cidr "$RUNNER_IP" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP}]" \
           || echo "La regla ya no existe"
         env:
           SG_ID: ${{ env.SG_ID }}

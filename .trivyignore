@@ -1,0 +1,2 @@
+# Ignore linux-libc-dev kernel ksmbd issue as there is no fixed version available yet in debian
+CVE-2026-43185

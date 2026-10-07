@@ -20,7 +20,10 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
           working_directory: ./terraform
-          soft_fail: true # Muestra advertencias pero no rompe el pipeline
+          # soft_fail: true — los workers EC2 están en subnets públicas (necesitan
+          # internet para pull de imágenes y paquetes sin NAT Gateway). Tfsec lo
+          # marca como warning; es una decisión arquitectónica aceptada y documentada.
+          soft_fail: true
 
   seguridad-imagenes:
     name: Escaneo de Contenedores (Trivy)
@@ -37,8 +40,8 @@ jobs:
         with:
           image-ref: "kuro-backend:test"
           format: "table"
-          exit-code: "0"
-          severity: "CRITICAL,HIGH"
+          exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
+          severity: "CRITICAL"
 
       - name: Build Frontend (Local)
         run: docker build -t kuro-frontend:test ./kuro-frontend --build-arg PUBLIC_API_URL=test --build-arg PUBLIC_GOOGLE_CLIENT_ID=test --build-arg PUBLIC_STRIPE_PUBLISHABLE_KEY=test
@@ -48,5 +51,5 @@ jobs:
         with:
           image-ref: "kuro-frontend:test"
           format: "table"
-          exit-code: "0"
-          severity: "CRITICAL,HIGH"
+          exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
+          severity: "CRITICAL"

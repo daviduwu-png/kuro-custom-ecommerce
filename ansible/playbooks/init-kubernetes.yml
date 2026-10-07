@@ -162,7 +162,7 @@
         kubectl get pods -n kube-system -l k8s-app=calico-node --no-headers \
           | grep -v Running | wc -l
       register: calico_not_ready
-      retries: 20
+      retries: 30
       delay: 15
       until: calico_not_ready.stdout | trim == "0"
       changed_when: false
@@ -211,49 +211,29 @@
   hosts: kuro-control-plane-01
   become: false
   tasks:
-    - name: Esperar a que todos los nodos generen sus CSRs de serving
+    - name: Parchear Metrics Server para usar InternalIP (requerido en AWS con kubeadm)
       become_user: "{{ kubeconfig_user }}"
-      shell: |
-        TOTAL_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l || echo 0)
-        TOP_NODES=$(kubectl top nodes --no-headers 2>/dev/null | wc -l || echo 0)
-        
-        if [ "$TOTAL_NODES" -gt 0 ] && [ "$TOTAL_NODES" -eq "$TOP_NODES" ]; then
-          echo "Todos los nodos ya tienen métricas. No se esperan nuevos CSRs."
-          exit 0
-        fi
-        
-        for i in {1..15}; do
-          PENDING=$(kubectl get csr --no-headers 2>/dev/null | grep -c 'Pending' || echo 0)
-          if [ "$PENDING" -ge 1 ]; then
-            echo "Se encontraron $PENDING CSRs pendientes."
-            exit 0
-          fi
-          sleep 10
-        done
-        echo "No se encontraron CSRs pendientes después de esperar."
-        exit 0
-      register: wait_csrs
-      changed_when: false
+      command: >
+        kubectl patch deployment metrics-server -n kube-system --type='json'
+        -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"}]'
+      register: patch_metrics
+      changed_when: "'patched' in patch_metrics.stdout"
+      failed_when: false
 
-    - name: Aprobar todos los CSRs de kubelet-serving pendientes
+
+
+    - name: Aprobar CSRs continuamente y verificar que Metrics Server funciona
       become_user: "{{ kubeconfig_user }}"
       shell: |
-        pending=$(kubectl get csr --no-headers 2>/dev/null \
-          | grep 'Pending' | awk '{print $1}')
+        # Aprobar cualquier CSR pendiente en este intento
+        pending=$(kubectl get csr --no-headers 2>/dev/null | grep 'Pending' | awk '{print $1}')
         if [ -n "$pending" ]; then
           kubectl certificate approve $pending
-          echo "Aprobados: $pending"
-        else
-          echo "Sin CSRs pendientes"
         fi
-      register: csr_approval
-      changed_when: "'Aprobados' in csr_approval.stdout"
-
-    - name: Verificar que Metrics Server tiene endpoints disponibles
-      become_user: "{{ kubeconfig_user }}"
-      command: kubectl top nodes
+        # Comprobar si top nodes ya funciona
+        kubectl top nodes
       register: top_nodes
-      retries: 15
+      retries: 36
       delay: 10
       until: top_nodes.rc == 0
       changed_when: false

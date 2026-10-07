@@ -56,3 +56,56 @@
         regexp: '^127\.0\.1\.1\s+.*'
         line: "127.0.1.1 {{ inventory_hostname }}"
         state: present
+
+    # -------------------------------------------------------------------------
+    # Hardening SSH — principio de mínimo privilegio en el acceso remoto.
+    # Desactiva autenticación por contraseña, acceso root, y reenvío X11.
+    # Reduce el número de intentos de autenticación para mitigar fuerza bruta.
+    # -------------------------------------------------------------------------
+    - name: Hardening SSH — deshabilitar autenticación por contraseña
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+
+    - name: Hardening SSH — deshabilitar login como root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+
+    - name: Hardening SSH — deshabilitar X11Forwarding
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?X11Forwarding'
+        line: 'X11Forwarding no'
+        state: present
+
+    - name: Hardening SSH — limitar intentos de autenticación a 3
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?MaxAuthTries'
+        line: 'MaxAuthTries 3'
+        state: present
+
+    - name: Hardening SSH — deshabilitar reenvío de agente TCP
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?AllowTcpForwarding'
+        line: 'AllowTcpForwarding no'
+        state: present
+
+    - name: Hardening SSH — reducir timeout de autenticación a 30 segundos
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?LoginGraceTime'
+        line: 'LoginGraceTime 30'
+        state: present
+
+    - name: Reiniciar ssh para aplicar cambios de hardening
+      service:
+        name: ssh
+        state: restarted
+
