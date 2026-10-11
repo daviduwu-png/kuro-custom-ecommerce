@@ -110,6 +110,8 @@ Este es el componente de elasticidad más significativo del proyecto. Opera de f
 
 El pipeline de despliegue (`despliegue-app.yml`) resuelve la IP del control plane **dinámicamente por tags EC2** (no está hardcodeada) y abre el puerto SSH en el Security Group únicamente durante la ejecución del job, cerrándolo con `if: always()` incluso si el pipeline falla. Los secrets se inyectan en los manifiestos de K8s via `sed` en tiempo de ejecución — nunca se almacenan en el repositorio.
 
+![Flujo de Trabajo GitOps y DevSecOps](docs/Diagramas/flujo_gitops_devsecops.webp)
+
 ### 7. Stack de Observabilidad automatizado y seguro (Prometheus + Grafana)
 
 El stack de monitoreo se despliega mediante Ansible (`ansible/playbooks/observability.yml`), que renderiza y aplica los manifiestos de K8s ubicados en `k8s-manifests/monitoring/`. Se usa el módulo `template` de Ansible para sustituir las versiones de imagen (definidas en `group_vars/all.yml`) antes de aplicarlos al cluster.
@@ -207,7 +209,11 @@ Capa 3 — observability.yml   → Prometheus, Node Exporter, Grafana
 
 ## Arquitectura (alto nivel)
 
-![Diagrama de Arquitectura Kuro](docs/Diagramas/arquitecturakuro.png)
+### Topología de Red en AWS
+![Topología de Red en AWS](docs/Diagramas/topologia_red_aws.webp)
+
+### Flujo de una Petición de Usuario
+![Flujo de una Petición de Usuario](docs/Diagramas/flujo_peticion_usuario.webp)
 
 ```
 Internet
