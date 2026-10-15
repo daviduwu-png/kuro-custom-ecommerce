@@ -1,5 +1,5 @@
 # Etapa 1: Construcci 3n (Build)
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Argumentos de Build para Vite/Astro
@@ -23,7 +23,7 @@ ENV ASTRO_ADAPTER=node
 RUN npm run build
 
 # Etapa 2: Servidor Node (Astro SSR)
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
