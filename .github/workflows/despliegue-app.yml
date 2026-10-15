@@ -25,14 +25,14 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./kuro-backend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/kuro-backend:latest
 
       - name: Build and Push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./kuro-frontend
           push: true
