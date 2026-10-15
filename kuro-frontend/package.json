@@ -27,7 +27,7 @@
     "nanostores": "^1.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-draggable": "^4.5.0",
+    "react-draggable": "^4.7.1",
     "sileo": "^0.1.4",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
