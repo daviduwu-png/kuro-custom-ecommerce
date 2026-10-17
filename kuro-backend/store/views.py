@@ -68,6 +68,8 @@ class ProductListAPI(generics.ListAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    # Catálogo público de solo lectura: sin rate limit (permite pruebas de estrés/HPA).
+    throttle_classes = []
 
 
 class ProductDetailAPI(generics.RetrieveAPIView):
@@ -76,12 +78,14 @@ class ProductDetailAPI(generics.RetrieveAPIView):
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     permission_classes = [AllowAny]
+    throttle_classes = []
 
 
 class ProductByCategoryAPI(generics.ListAPIView):
     """GET /api/products/category/<category>/  —  Filtrar productos por categoría."""
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
+    throttle_classes = []
 
     def get_queryset(self):
         category = self.kwargs['category']
