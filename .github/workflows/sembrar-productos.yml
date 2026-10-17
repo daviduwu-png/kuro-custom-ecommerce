@@ -1,0 +1,79 @@
+name: Sembrar Productos de Prueba (Manual)
+
+# Workflow para insercion de productos para pruebas de estres y validaciones
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Numero de productos de prueba a generar"
+        required: true
+        default: "50"
+      clear:
+        description: "Borrar TODOS los productos existentes antes de sembrar"
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+  seed-products:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Configurar llave SSH del Control Plane
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/kuro-custom-key.pem
+          chmod 600 ~/.ssh/kuro-custom-key.pem
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Obtener IP del Control Plane dinámicamente
+        id: get-ip
+        run: |
+          IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Rol,Values=Control_Plane" "Name=instance-state-name,Values=running" \
+            --query "Reservations[*].Instances[*].PublicIpAddress" \
+            --output text)
+          echo "La IP detectada es: $IP"
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+
+      - name: Abrir SSH temporal para el runner de GitHub Actions
+        id: ssh-open
+        run: |
+          RUNNER_IP="$(curl -s https://checkip.amazonaws.com)/32"
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=sg_kuro_control_plane" \
+            --query "SecurityGroups[0].GroupId" \
+            --output text)
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP,Description='Temporal: GitHub Actions runner - auto-eliminado al final del job (Seed)'}]"
+
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          echo "SG_ID=$SG_ID" >> $GITHUB_ENV
+
+      - name: Ejecutar seed_products dentro del pod de backend
+        run: |
+          COUNT="${{ github.event.inputs.count }}"
+          CLEAR_FLAG=""
+          if [ "${{ github.event.inputs.clear }}" = "true" ]; then CLEAR_FLAG="--clear"; fi
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/kuro-custom-key.pem ubuntu@${{ steps.get-ip.outputs.ip }} \
+            "kubectl exec -n kuro deploy/kuro-backend -- python manage.py seed_products --count $COUNT $CLEAR_FLAG"
+
+      - name: Cerrar SSH temporal del runner
+        if: always() && steps.ssh-open.outcome == 'success'
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SG_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP}]" \
+          || echo "La regla ya no existe"
+        env:
+          SG_ID: ${{ env.SG_ID }}
+          RUNNER_IP: ${{ env.RUNNER_IP }}

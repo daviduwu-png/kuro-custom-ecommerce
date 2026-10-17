@@ -11,6 +11,7 @@ resource "aws_db_instance" "kuro_postgres" {
   parameter_group_name = "default.postgres16"
   skip_final_snapshot  = true
   publicly_accessible  = false
+  storage_encrypted    = true # Cifrado en reposo con la clave KMS administrada aws/rds
   db_subnet_group_name = aws_db_subnet_group.kuro_db_subnet_group.name
 
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
