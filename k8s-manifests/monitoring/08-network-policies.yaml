@@ -141,6 +141,15 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+    # kube-state-metrics (mismo namespace monitoring, puerto 8080)
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kube-state-metrics
+      ports:
+        - protocol: TCP
+          port: 8080
+
 
 ---
 # -----------------------------------------------------------------------------
@@ -178,3 +187,46 @@ spec:
     - ports:
         - protocol: TCP
           port: 443
+
+---
+# -----------------------------------------------------------------------------
+# 6. kube-state-metrics — acepta scraping de Prometheus y consulta al API Server
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kube-state-metrics
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Acepta scraping desde Prometheus
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # K8s API Server en el VPC CIDR (puerto 6443)
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 6443
+
