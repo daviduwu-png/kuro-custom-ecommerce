@@ -36,9 +36,9 @@ metadata:
   namespace: kuro
   # Documentación: https://kubernetes.io/docs/concepts/services-networking/network-policies/
 spec:
-  podSelector: {}   # Aplica a TODOS los pods del namespace kuro
+  podSelector: {} # Aplica a TODOS los pods del namespace kuro
   policyTypes:
-    - Ingress       # Solo restringe ingress; egress queda libre para llamadas a APIs externas
+    - Ingress # Solo restringe ingress; egress queda libre para llamadas a APIs externas
 
 ---
 # -----------------------------------------------------------------------------
