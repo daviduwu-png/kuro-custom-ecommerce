@@ -5,7 +5,7 @@ metadata:
   namespace: kuro
 data:
   DEBUG: "False"
-  ALLOWED_HOSTS: "kurocustom.uk,www.kurocustom.uk"
+  ALLOWED_HOSTS: "kurocustom.uk,www.kurocustom.uk,kuro-backend,kuro-backend.kuro.svc.cluster.local,localhost,127.0.0.1"
   FRONTEND_URL: "https://kurocustom.uk"
   BACKEND_URL: "https://kurocustom.uk"
   CORS_ALLOWED_ORIGINS: "https://kurocustom.uk,https://www.kurocustom.uk"
