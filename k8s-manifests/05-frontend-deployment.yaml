@@ -38,22 +38,22 @@ spec:
               drop: ["ALL"]
           readinessProbe:
             httpGet:
-              path: /
+              path: /health.txt
               port: 3000
-            initialDelaySeconds: 30
+            initialDelaySeconds: 15
             periodSeconds: 10
-            failureThreshold: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /health.txt
               port: 3000
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             periodSeconds: 20
-            failureThreshold: 5
+            failureThreshold: 3
           resources:
             requests:
-              cpu: "50m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
+              cpu: "100m"
               memory: "256Mi"
+            limits:
+              cpu: "800m"
+              memory: "512Mi"

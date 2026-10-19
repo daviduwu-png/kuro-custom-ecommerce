@@ -12,7 +12,7 @@ La gestión de configuración siguió la metodología _Twelve-Factor Apps_, inye
 
 ### Resultados y Validación (Ingeniería del Caos)
 
-La resiliencia fue validada bajo condiciones de carga extrema (saturación de CPU de hasta **398%**) mediante protocolos de Ingeniería del Caos con 30,000 peticiones HTTP concurrentes:
+La resiliencia fue validada bajo condiciones de carga extrema (saturación de CPU de hasta **398%**) mediante pruebas de Ingeniería del Caos con Apache JMeter (`kuro_test_https.jmx`): 300 usuarios virtuales concurrentes (rampa de 60 s) que ejecutan 100 iteraciones cada uno, para un total de **30,000 peticiones HTTP GET** a `https://kurocustom.uk/`:
 
 | Métrica                      | Resultado                      |
 | ---------------------------- | ------------------------------ |
@@ -92,19 +92,28 @@ La práctica del AWS Well-Architected Framework exige que la capa de datos resid
 - Subnets privadas sin Internet Gateway — RDS no tiene ruta de salida ni de entrada desde internet.
 - `publicly_accessible = false` — AWS no asigna IP pública al endpoint.
 - **SG dedicado `sg_kuro_rds`** — solo permite ingress en puerto 5432 desde `seguridad_kuro` (workers). Sin reglas de NodePort, ALB ni inter-worker. Egress bloqueado (RDS no inicia conexiones de salida).
-- Cifrado en tránsito habilitado por defecto en PostgreSQL 16.
+- Cifrado en reposo habilitado (`storage_encrypted = true`, clave KMS administrada `aws/rds`, sin costo adicional).
+- Cifrado en tránsito: RDS PostgreSQL 16 exige conexiones SSL por defecto (`rds.force_ssl`).
 
+#### Optimización de Conexiones y Capa de Datos (FinOps & Well-Architected Framework)
+Para garantizar que las métricas de CloudWatch (`CPUUtilization`, `DatabaseConnections`) durante las pruebas de estrés reflejen la capacidad elástica de la infraestructura y no cuellos de botella de software:
+- **Connection Pooling (`CONN_MAX_AGE: 60`):** Reutilización de sockets TCP entre peticiones concurrentes de Gunicorn, eliminando la sobrecarga recurrente de negociación SSL y autenticación en PostgreSQL para 30,000 peticiones.
+- **Optimización de consultas a la base de datos (`prefetch_related`):** Eliminación del patrón $N+1$ en las consultas de catálogo y variantes, reduciendo en más del 80% las transacciones directas hacia RDS.
+- **Alineación FinOps:** Demuestra cómo la optimización en el ciclo de vida de la conexión y en la capa de cómputo previene el sobredimensionamiento innecesario (*oversizing*) del hardware de base de datos.
 
 ### 5. HPA con Target Tracking — elasticidad real dentro de los nodos
 
 El **Horizontal Pod Autoscaler** (`06-hpa.yaml`) implementa el patrón de _Target Tracking Scaling_ descrito en el pilar de Eficiencia de Rendimiento del Well-Architected Framework:
 
 ```
-CPU promedio > 50% → K8s escala de 2 a 5 réplicas automáticamente
-CPU promedio < 50% → K8s reduce réplicas para liberar recursos
+Frontend: CPU promedio > 50% (sobre request 100m) → K8s escala de 2 a 5 réplicas
+Backend:  CPU promedio > 50% (sobre request 100m) → K8s escala de 2 a 5 réplicas
+Bajo umbral → K8s reduce réplicas ordenadamente para liberar recursos (FinOps)
 ```
 
-Este es el componente de elasticidad más significativo del proyecto. Opera de forma totalmente automática y fue validado durante las pruebas de Ingeniería del Caos.
+Este es el componente de elasticidad más significativo del proyecto. Opera de forma totalmente automática y fue validado mediante dos planes de JMeter:
+- **Frontend (`kuro_test_https.jmx`):** 300 hilos concurrentes hacia `GET https://kurocustom.uk/` (estrés del SSR en Node.js y capa web). Probes optimizados a `/health.txt` para evitar sobrecarga de render.
+- **Backend + RDS (`kuro_test_backend_api.jmx`):** 300 hilos concurrentes con mezcla de lecturas de catálogo hacia `/api/products/*`, midiendo la resiliencia conjunta de pods Django y la base de datos PostgreSQL.
 
 ### 6. CI/CD con IP dinámica y apertura temporal de Security Group
 
@@ -146,7 +155,7 @@ Durante el pipeline de despliegue (`despliegue-infra.yml`), Terraform se comunic
 
 Una arquitectura JAMstack alternativa habría consistido en servir el build estático de Astro/React desde un **S3 bucket con CloudFront** como CDN, desacoplando completamente la capa de presentación del clúster. Esta opción fue evaluada y descartada deliberadamente por las siguientes razones:
 
-1. **Coherencia del objeto de investigación:** La tesis valida el comportamiento de Kubernetes bajo carga extrema. Si el frontend reside fuera del clúster, el tráfico de la UI queda fuera del plano de control de K8s, lo que significa que el HPA, las métricas de Prometheus y los dashboards de Grafana capturarían únicamente la carga del backend. Los resultados de las pruebas de Ingeniería del Caos (30.000 peticiones concurrentes) serían parciales e incomparables entre ejecuciones.
+1. **Coherencia del objeto de investigación:** La tesis valida el comportamiento de Kubernetes bajo carga extrema. Si el frontend reside fuera del clúster, el tráfico de la UI queda fuera del plano de control de K8s, lo que significa que el HPA, las métricas de Prometheus y los dashboards de Grafana capturarían únicamente la carga del backend. Los resultados de las pruebas de Ingeniería del Caos (30,000 peticiones HTTP con 300 usuarios concurrentes) serían parciales e incomparables entre ejecuciones.
 
 2. **Integridad del experimento:** El entorno de hardware debe ser controlado y reproducible. Introducir una CDN con caché distribuida haría que los tiempos de respuesta medidos dependieran de variables externas al clúster (hit/miss ratio de caché, edge locations de CloudFront), invalidando la metodología experimental.
 
@@ -193,8 +202,10 @@ kuro-custom-ecommerce/
 │   ├── 07-network-policies.yaml    # Segmentación de red: deny-all + allowlist por servicio
 │   └── monitoring/            # Manifiestos del stack de observabilidad (Prometheus, Grafana)
 ├── .github/
-│   ├── workflows/         # Pipelines CI/CD (despliegue-app, despliegue-infra, seguridad)
+│   ├── workflows/         # Pipelines CI/CD (despliegue-app, despliegue-infra, seguridad, sembrar-productos)
 │   └── dependabot.yml     # Actualizaciones automáticas de dependencias
+├── kuro_test_https.jmx        # Plan JMeter: estrés sobre Frontend (30,000 reqs)
+├── kuro_test_backend_api.jmx  # Plan JMeter: estrés sobre Backend API & RDS (30,000 reqs)
 └── docker-compose.yml     # Orquestación local para desarrollo
 ```
 
@@ -209,6 +220,9 @@ Capa 3 — observability.yml   → Prometheus, Node Exporter, Grafana
 
 ## Arquitectura (alto nivel)
 
+### Arquitectura Global de la Tesis
+![Arquitectura Global de la Tesis](docs/Diagramas/arquitecturakuro.webp)
+
 ### Topología de Red en AWS
 ![Topología de Red en AWS](docs/Diagramas/topologia_red_aws.webp)
 
@@ -219,8 +233,9 @@ Capa 3 — observability.yml   → Prometheus, Node Exporter, Grafana
 Internet
   └→ ALB (Multi-AZ: us-east-1a + us-east-1b) — HTTPS, path-based routing
         ├→ NodePort 30080 → kuro-frontend pods (Astro/React)
-        └→ NodePort 30800 → kuro-backend pods (Django)
-                                  ↕ HPA: 2–5 réplicas por CPU
+        ├→ NodePort 30800 → kuro-backend pods (Django)
+        │                         ↕ HPA: 2–5 réplicas por CPU
+        └→ NodePort 30300 → Grafana (grafana.kurocustom.uk)
               EC2 Worker 1 (us-east-1a)  +  EC2 Worker 2 (us-east-1b)
               EC2 Control Plane (us-east-1a) — kubeadm, etcd, kube-apiserver
                           └→ RDS PostgreSQL 16.3 (db.t3.micro)
@@ -336,7 +351,7 @@ La arquitectura implementada cubre los dos primeros niveles de la jerarquía de 
 ```
 Nivel 1 — Pod Scaling       [IMPLEMENTADO]
   └→ HPA: escala réplicas de 2 a 5 por presión de CPU (50% target)
-     Validado bajo 30,000 peticiones concurrentes sin downtime.
+     Validado bajo 30,000 peticiones HTTP (300 usuarios concurrentes) sin downtime.
 
 Nivel 2 — Traffic Scaling   [IMPLEMENTADO]
   └→ ALB Multi-AZ: distribuye carga entre workers en us-east-1a y us-east-1b.
