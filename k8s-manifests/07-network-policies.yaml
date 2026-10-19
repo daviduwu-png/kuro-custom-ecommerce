@@ -62,10 +62,12 @@ spec:
     - Ingress
   ingress:
     # Tráfico desde la VPC en puerto 3000 (ALB via NodePort + nodos del cluster)
-    # ipBlock restringe el origen a IPs internas de la VPC únicamente.
+    # y desde la red de pods de Calico (192.168.0.0/16) para enrutamiento cross-node
     - from:
         - ipBlock:
             cidr: 10.0.0.0/16
+        - ipBlock:
+            cidr: 192.168.0.0/16
       ports:
         - protocol: TCP
           port: 3000

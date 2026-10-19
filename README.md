@@ -63,8 +63,9 @@ Principio: default-deny-ingress + allowlist explícita por servicio
 
 Internet → ALB → NodePort → [frontend] ──(8000)──→ [backend] → RDS :5432
                                 ↑                      ↑
-                         allow desde VPC CIDR      allow desde frontend
-                         (10.0.0.0/16, port 3000)   y desde ALB via NodePort
+                         allow VPC (10.0.0.0/16)   allow desde frontend
+                         + Pods (192.168.0.0/16)   y desde ALB via NodePort
+                         (puerto 3000)
 
 Flujos denegados implícitamente:
   ✗ frontend → RDS directamente (5432)
@@ -73,9 +74,12 @@ Flujos denegados implícitamente:
   ✗ tráfico externo directo a Prometheus (no expuesto vía ALB)
 ```
 
-El namespace `monitoring` tiene su propio conjunto de NetworkPolicies (`08-network-policies.yaml`) con el mismo modelo deny-all: Grafana acepta ingress solo desde la VPC en puerto 3000, Prometheus solo puede scrapear namespaces autorizados (`kuro`, `kube-system`, `monitoring`), y Node Exporter solo acepta conexiones desde Prometheus.
+El namespace `monitoring` tiene su propio conjunto de NetworkPolicies (`08-network-policies.yaml`) con el mismo modelo deny-all: Grafana acepta ingress desde la VPC y red de pods en puerto 3000, Prometheus solo puede scrapear namespaces autorizados (`kuro`, `kube-system`, `monitoring`), y Node Exporter solo acepta conexiones desde Prometheus.
 
-**Nota sobre el CIDR:** Flannel usa `10.244.0.0/16` por defecto; Calico usa `192.168.0.0/16`. El pod CIDR está centralizado en `group_vars/all.yml` y se pasa a `kubeadm` via `podSubnet`, garantizando consistencia entre el plano de control y el CNI.
+**Nota sobre el CIDR y Enrutamiento Multi-Nodo (Prevención de 504 Gateway Timeout):**
+- Flannel usa `10.244.0.0/16` por defecto; Calico usa `192.168.0.0/16`. El pod CIDR está centralizado en `group_vars/all.yml` y se pasa a `kubeadm` via `podSubnet`, garantizando consistencia entre el plano de control y el CNI.
+- En un cluster multi-nodo con servicios `NodePort`, cuando el ALB entrega una petición al Worker 1 y `kube-proxy` la reenvía a un pod situado en el Worker 2 (*cross-node routing*), los paquetes atraviesan el túnel overlay de Calico adquiriendo como IP de origen una dirección del rango `192.168.0.0/16`.
+- La NetworkPolicy de Frontend autoriza explícitamente tanto `10.0.0.0/16` (tráfico directo local desde el nodo/VPC) como `192.168.0.0/16` (tráfico entre nodos). Esto elimina descartes silenciosos de paquetes (*silent drops*) y tiempos de espera de conexión (504 Gateway Timeout) sin vulnerar el principio de mínimo privilegio (*Zero Trust*).
 
 ### 4. RDS en subnets privadas sin NAT Gateway
 
