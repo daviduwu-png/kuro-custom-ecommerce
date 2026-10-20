@@ -65,7 +65,7 @@ class RegisterAnonThrottle(AnonRateThrottle):
 
 class ProductListAPI(generics.ListAPIView):
     """GET /api/products/  —  Listar todos los productos."""
-    queryset = Product.objects.all()
+    queryset = Product.objects.prefetch_related('variants').all()
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
     # Catálogo público de solo lectura: sin rate limit (permite pruebas de estrés/HPA).
@@ -74,7 +74,7 @@ class ProductListAPI(generics.ListAPIView):
 
 class ProductDetailAPI(generics.RetrieveAPIView):
     """GET /api/products/<slug>/  —  Detalle de un producto."""
-    queryset = Product.objects.all()
+    queryset = Product.objects.prefetch_related('variants').all()
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     permission_classes = [AllowAny]
@@ -89,7 +89,7 @@ class ProductByCategoryAPI(generics.ListAPIView):
 
     def get_queryset(self):
         category = self.kwargs['category']
-        return Product.objects.filter(category=category)
+        return Product.objects.filter(category=category).prefetch_related('variants')
 
 
 class ProductVariantListAPI(generics.ListAPIView):

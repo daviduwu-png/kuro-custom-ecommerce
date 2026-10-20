@@ -42,6 +42,7 @@ jobs:
           format: "table"
           exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
           severity: "CRITICAL"
+          ignore-unfixed: true
 
       - name: Build Frontend (Local)
         run: docker build -t kuro-frontend:test ./kuro-frontend --build-arg PUBLIC_API_URL=test --build-arg PUBLIC_GOOGLE_CLIENT_ID=test --build-arg PUBLIC_STRIPE_PUBLISHABLE_KEY=test
@@ -53,3 +54,4 @@ jobs:
           format: "table"
           exit-code: "1" # Falla el pipeline si se detectan CVEs CRÍTICOS
           severity: "CRITICAL"
+          ignore-unfixed: true

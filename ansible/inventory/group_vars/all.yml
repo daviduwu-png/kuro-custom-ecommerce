@@ -45,3 +45,6 @@ node_exporter_version: "v1.8.1"
 
 # Referencia Grafana: https://github.com/grafana/grafana/releases
 grafana_version: "11.1.0"
+
+# Referencia kube-state-metrics: https://github.com/kubernetes/kube-state-metrics/releases
+kube_state_metrics_version: "v2.10.0"

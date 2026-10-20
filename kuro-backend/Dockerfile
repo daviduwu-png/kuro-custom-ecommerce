@@ -6,12 +6,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para PostgreSQL (psycopg2) y compilar
-RUN apt-get update \
-    && apt-get install -y libpq-dev gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copiar e instalar dependencias de Python
+# Copiar e instalar dependencias de Python (todas usan wheels binarios precompilados)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

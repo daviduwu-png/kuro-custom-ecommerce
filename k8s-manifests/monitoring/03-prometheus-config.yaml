@@ -69,3 +69,9 @@ data:
           - action: labelmap
             regex: __meta_kubernetes_node_label_(.+)
         metrics_path: /metrics/cadvisor
+
+      # Métricas de estado de objetos K8s (Deployments, Pods, Services, HPA)
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.monitoring.svc.cluster.local:8080']
+

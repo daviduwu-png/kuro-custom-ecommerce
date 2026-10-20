@@ -23,6 +23,7 @@
     monitoring_manifests:
       - 00-namespace.yaml
       - 01-node-exporter.yaml
+      - 01b-kube-state-metrics.yaml
       - 02-prometheus-rbac.yaml
       - 03-prometheus-config.yaml
       - 04-prometheus-deploy.yaml
