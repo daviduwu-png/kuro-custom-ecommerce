@@ -6,20 +6,23 @@ Este repositorio contiene el código fuente y la infraestructura de **Kuro Custo
 
 ### Contexto de la Tesis
 
-El proyecto se desarrolló principalmente sobre **Amazon Web Services (AWS)**, con una evaluación complementaria sobre **Google Cloud Platform (GCP)**. Tras comparar múltiples distribuciones Linux de nivel empresarial se seleccionó **Ubuntu Server 24.04 LTS** para los nodos de producción, junto con contenedorización mediante Docker y orquestación con Kubernetes (runtime: containerd).
+El proyecto y su infraestructura se desarrollaron y ejecutaron íntegramente sobre **Amazon Web Services (AWS)** en la región `us-east-1` (empleando a Google Cloud Platform exclusivamente como benchmark analítico tarifario previo en el marco metodológico). Tras comparar múltiples distribuciones Linux de nivel empresarial se seleccionó **Ubuntu Server 24.04 LTS** para los nodos de producción, junto con contenedorización mediante Docker y orquestación con Kubernetes autogestionado con `kubeadm` (runtime: containerd).
 
 La gestión de configuración siguió la metodología _Twelve-Factor Apps_, inyectando credenciales y parámetros mediante ConfigMaps y Secrets de Kubernetes, sin almacenarlos en el repositorio. El análisis se centró en identificar la combinación más eficiente en términos de latencia, tolerancia a fallos, seguridad perimetral (DevSecOps) y coste operativo, aplicando metodologías **FinOps** y principios de _Green Cloud Computing_.
 
-### Resultados y Validación (Ingeniería del Caos)
+### Resultados y Validación (Ingeniería del Caos y Carga Masiva)
 
-La resiliencia fue validada bajo condiciones de carga extrema (saturación de CPU de hasta **398%**) mediante pruebas de Ingeniería del Caos con Apache JMeter (`kuro_test_https.jmx`): 300 usuarios virtuales concurrentes (rampa de 60 s) que ejecutan 100 iteraciones cada uno, para un total de **30,000 peticiones HTTP GET** a `https://kurocustom.uk/`:
+La resiliencia y elasticidad de la arquitectura fueron auditadas mediante dos corridas independientes de pruebas de estrés masivas con Apache JMeter (300 hilos concurrentes, rampa de aceleración de 60 s y 100 iteraciones por hilo, para un total de **30,000 peticiones HTTP** dirigidas al ALB en cada prueba), combinadas con protocolos de inyección de fallos de Ingeniería del Caos:
 
-| Métrica                      | Resultado                      |
-| ---------------------------- | ------------------------------ |
-| Tasa de error                | **0.04%**                      |
-| Tiempo de respuesta promedio | **730 ms**                     |
-| Escalado HPA                 | 2 → 5 réplicas sin downtime    |
-| MTTR ante caída de nodo      | Horas → **minutos** (multi-AZ) |
+| Métrica / Escenario | Capa Frontend (`GET kurocustom.uk`) | Capa Backend API (`/api/products/*`) | Validación de Infraestructura / Caos |
+| :--- | :--- | :--- | :--- |
+| **Rendimiento (Throughput)** | **374.87 transacciones/s** | **195.00 transacciones/s** | Capacidad elástica en nodos de cómputo fijos |
+| **Tasa de éxito / Errores** | **0.00% de errores** (100% exitosas) | **99.98% de éxito** (0.02% error, 5 códigos 502) | 5 errores marginales durante el arranque en frío inicial |
+| **Tiempo de respuesta promedio** | **301.79 ms** (p99 de 650 ms, APDEX 0.944) | **700.34 ms** (mediana 613 ms) | Latencia sub-segundo bajo ráfagas de 300 hilos |
+| **Pico de CPU en HPA** | **794% / 50%** (escala de 2 a 5 réplicas) | **800% / 50%** (escala de 2 a 5 réplicas) | Relación sobre el request base de 100 milicores por pod |
+| **Impacto en Amazon RDS** | — | **18.1% CPU pico** (base 3.80%) | **25 conexiones concurrentes** activas controladas |
+| **Caída de Worker Node (Multi-AZ)** | Continuidad con respuestas HTTP 200 | Aislamiento perimetral ALB en **< 60 s** | Reprogramación automática de réplicas en nodo funcional |
+| **Disaster Recovery (MTTR)** | Reconstrucción completa del nodo | **3 minutos y 44 segundos** | Pipeline automatizado con GitHub Actions, Terraform y Ansible |
 
 ---
 
@@ -54,7 +57,7 @@ Se eligió **Calico** como Container Network Interface (CNI) en lugar de Flannel
 
 **Flannel** ofrece únicamente conectividad L3 entre pods (overlay VXLAN), sin ningún mecanismo de segmentación. En un namespace sin Network Policies, cualquier pod puede conectarse a cualquier otro pod del cluster en cualquier puerto — incluyendo conexiones desde el frontend directamente al pod del backend omitiendo el Service, o desde un pod comprometido hacia el endpoint de RDS.
 
-**Calico** implementa el mismo overlay de red pero además actúa como controlador de Network Policies, programando reglas `iptables`/`eBPF` en cada nodo para hacer cumplir las políticas declaradas en los manifiestos de Kubernetes.
+**Calico** implementa el mismo overlay de red pero además actúa como controlador de Network Policies, programando reglas `iptables` en cada nodo para hacer cumplir las políticas declaradas en los manifiestos de Kubernetes.
 
 **Modelo de segmentación implementado** (`k8s-manifests/07-network-policies.yaml`, `k8s-manifests/monitoring/08-network-policies.yaml`):
 
@@ -256,7 +259,7 @@ Internet
 | **CI/CD**          | GitHub Actions, Docker Hub                                          |
 | **DevSecOps**      | Dependabot, Trivy, Tfsec, `runAsNonRoot`, Security Groups dinámicos |
 | **Observabilidad** | Prometheus, Node Exporter, Grafana                                  |
-| **Cloud**          | AWS (EC2, RDS, ALB, ACM, S3, VPC), GCP (evaluación comparativa)     |
+| **Cloud**          | Amazon Web Services (AWS: EC2, RDS PostgreSQL 16.3, ALB, ACM, S3, VPC) |
 
 ## Requisitos
 
@@ -383,17 +386,15 @@ La ausencia del Nivel 3 y 4 es una **decisión metodológica consciente**, no un
 
 - **Restricción experimental:** Los nodos de tamaño fijo garantizan que las métricas de las pruebas de Ingeniería del Caos (latencia, tasa de error, escalado de pods) sean reproducibles y comparables entre ejecuciones. Nodos dinámicos introducirían variabilidad en el hardware disponible que invalidaría la metodología.
 
-### Patrón de producción recomendado
+### Líneas de Desarrollo Futuro (Evolución a Escala Empresarial)
 
-Para un despliegue de producción sin restricciones de costo ni metodología experimental, la arquitectura ideal sería:
+En congruencia con las conclusiones de la investigación y las delimitaciones del alcance experimental, se definen cinco líneas estratégicas de trabajo futuro:
 
-```
-EKS (control plane gestionado por AWS)
-  + Managed Node Groups con ASG (self-healing nativo)
-  + Karpenter (node provisioning just-in-time, reemplaza Cluster Autoscaler)
-  + HPA o KEDA (pod scaling por CPU, memoria o métricas externas)
-  + Spot Instances en el ASG (reducción de costo del 60-70% en workers)
-```
+1. **Migración hacia un Plano de Control Gestionado (Amazon EKS):** Delegar la alta disponibilidad, respaldo y parchado del API Server y de la base distribuida `etcd` a AWS, optimizando la carga operativa del equipo de ingeniería.
+2. **Autoescalado Dinámico de Nodos con Karpenter:** Implementar aprovisionamiento *just-in-time* de instancias EC2 en segundos cuando la demanda de pods sature los servidores físicos, combinando instancias bajo demanda con instancias Spot para reducir hasta un 70% de costos de cómputo.
+3. **Malla de Servicios (Service Mesh con Istio o Linkerd):** Implementar una arquitectura de red de Confianza Cero (*Zero-Trust Network*) mediante cifrado mTLS transparente en el tráfico este-oeste entre microservicios, además de despliegues canarios (*Canary Releases*) y pruebas A/B a nivel de proxy sidecar.
+4. **Trazabilidad Distribuida con OpenTelemetry:** Instrumentar Django y Astro con SDKs de OpenTelemetry conectados a Jaeger o Grafana Tempo, permitiendo seguir el ciclo de vida de cada transacción HTTP milisegundo a milisegundo desde el ALB hasta la consulta relacional en Amazon RDS.
+5. **Topología Multi-Región Activo-Activo:** Extender los módulos de Terraform para orquestar clústeres redundantes en múltiples regiones geográficas de AWS, gobernados mediante enrutamiento por latencia en Amazon Route 53 y réplicas de lectura interregionales en Amazon RDS PostgreSQL.
 
 ## Licencia
 
