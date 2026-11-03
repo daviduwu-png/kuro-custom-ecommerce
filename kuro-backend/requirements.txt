@@ -1,5 +1,5 @@
 asgiref==3.11.0
-certifi==2026.1.4
+certifi==2026.10.23
 cffi==2.0.0
 charset-normalizer==3.4.4
 cloudinary==1.44.1
@@ -15,7 +15,7 @@ gunicorn==25.3.0
 idna==3.11
 mercadopago==2.3.0
 packaging==26.1
-pillow==12.1.0
+pillow==13.0.0
 psycopg2-binary==2.9.11
 pycparser==3.0
 PyJWT==2.14.0
